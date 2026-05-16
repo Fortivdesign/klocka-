@@ -535,6 +535,219 @@ tr.top-row td { background: linear-gradient(90deg, rgba(255,209,102,0.06), trans
   box-shadow: 0 18px 50px -10px rgba(255,209,102,0.35);
 }
 
+/* ===== Cloud badge ===== */
+.cloud-badge {
+  font-size: 11px;
+  margin-left: 6px;
+  opacity: 0.8;
+}
+.cloud-badge.on { filter: drop-shadow(0 0 6px #29d398aa); }
+
+/* ===== On Fire ===== */
+.head-stat.on-fire {
+  background: linear-gradient(135deg, #ff7a00, #ff3060);
+  border: 0;
+  animation: fire-pulse 1.4s ease-in-out infinite;
+  box-shadow: 0 0 20px rgba(255,80,40,0.4);
+}
+.head-stat.on-fire .head-stat-label { color: white; opacity: 0.9; }
+@keyframes fire-pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(255,80,40,0.4); }
+  50% { box-shadow: 0 0 32px rgba(255,80,40,0.7); }
+}
+
+/* ===== Challenge ===== */
+.challenge-card {
+  background:
+    radial-gradient(500px 200px at 100% 0%, rgba(245,165,36,0.15), transparent),
+    linear-gradient(135deg, #1a1e2c, #11141c);
+  border: 1px solid rgba(245,165,36,0.25);
+  margin-bottom: 16px;
+}
+
+/* ===== Shop ===== */
+.shop-item {
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.18s, border-color 0.18s;
+}
+.shop-item:hover { transform: translateY(-2px); border-color: var(--border); }
+.shop-emoji { font-size: 40px; line-height: 1; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.3)); }
+.shop-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 14px;
+}
+.shop-price {
+  font-weight: 800;
+  color: var(--gold);
+  font-size: 16px;
+}
+
+/* ===== Heatmap ===== */
+.heatmap-row {
+  display: grid;
+  grid-template-columns: repeat(24, 1fr);
+  gap: 4px;
+  margin-top: 8px;
+}
+.heatmap-cell { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.heatmap-square { width: 100%; aspect-ratio: 1; border-radius: 4px; transition: transform 0.15s; }
+.heatmap-square:hover { transform: scale(1.15); }
+.heatmap-label { font-size: 9px; color: var(--muted-2); font-variant-numeric: tabular-nums; }
+
+.mini-team-card { display: flex; align-items: center; gap: 12px; }
+
+/* ===== Meeting launch ===== */
+.meeting-launch {
+  position: absolute;
+  top: 16px;
+  right: 24px;
+  background: linear-gradient(135deg, #2a1f3d, #1a1325);
+  border: 1px solid #4a3d6b;
+  color: var(--text);
+  font-weight: 700;
+  padding: 8px 14px;
+  border-radius: 999px;
+  z-index: 10;
+  box-shadow: 0 6px 20px -6px rgba(124,92,255,0.4);
+}
+.meeting-launch:hover { background: linear-gradient(135deg, #382651, #211735); }
+
+/* ===== Meeting mode ===== */
+.meeting-overlay {
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(1200px 600px at 50% -100px, rgba(124,92,255,0.18), transparent 70%),
+    linear-gradient(180deg, #07080d, #03040a 100%);
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.meeting-exit {
+  position: fixed;
+  top: 20px;
+  right: 24px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--muted);
+  font-size: 12px;
+}
+.meeting-hint {
+  position: fixed;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--muted-2);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+.meeting-slide { width: 100%; max-width: 1100px; padding: 60px; text-align: center; }
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-in { animation: fade-in 0.55s ease-out; }
+
+.big-brand {
+  font-size: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.4em;
+  color: var(--muted);
+  margin-bottom: 18px;
+}
+.big-title {
+  font-size: 96px;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 1;
+}
+.big-sub { color: var(--muted); font-size: 22px; margin-top: 18px; }
+.big-eyebrow {
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  margin-bottom: 32px;
+}
+
+.leaderboard-big {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: stretch;
+}
+.row-big {
+  display: grid;
+  grid-template-columns: 80px 80px 1fr auto;
+  align-items: center;
+  gap: 24px;
+  padding: 18px 28px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 18px;
+  opacity: 0;
+  animation: row-in 0.6s ease-out forwards;
+}
+.row-big.rank-1 {
+  background: linear-gradient(90deg, rgba(255,209,102,0.18), rgba(255,209,102,0.03));
+  border: 1px solid rgba(255,209,102,0.3);
+}
+@keyframes row-in {
+  from { opacity: 0; transform: translateX(-30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.rank-big { font-size: 38px; font-weight: 900; text-align: center; }
+.row-big-name { font-size: 32px; font-weight: 700; text-align: left; }
+.row-big-score {
+  font-size: 44px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.row-big-score span { font-size: 18px; color: var(--muted); -webkit-text-fill-color: var(--muted); margin-left: 6px; }
+
+.summary-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+.summary-name { font-size: 44px; font-weight: 800; }
+.summary-text {
+  font-size: 22px;
+  line-height: 1.55;
+  color: #c8d1e3;
+  max-width: 820px;
+}
+
+.slacker-big {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.slacker-big-emoji { font-size: 130px; line-height: 1; }
+.slacker-big-name { font-size: 44px; font-weight: 800; margin-top: 12px; }
+.slacker-big-title { font-size: 32px; color: var(--gold); font-weight: 700; }
+.slacker-big-roast {
+  font-size: 22px;
+  color: #c0adde;
+  font-style: italic;
+  max-width: 720px;
+  margin-top: 8px;
+}
+.slacker-big-stats { display: flex; gap: 12px; color: var(--muted); font-size: 14px; margin-top: 20px; }
+
 /* ===== Consent ===== */
 .consent-overlay {
   position: fixed;

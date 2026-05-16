@@ -3,6 +3,9 @@ import { useStore } from '../store';
 import { calcStreak, formatHM, formatHMS, startOfDay } from '../lib/time';
 import { computeFocusScore } from '@shared/scoring';
 import type { ActivitySample } from '@shared/types';
+import { todaysChallenge } from '../lib/challenges';
+import { celebrate, sfx } from '../lib/effects';
+import { pushSession } from '../lib/sync';
 
 export function Dashboard() {
   const user = useStore((s) => s.currentUser);
@@ -15,6 +18,10 @@ export function Dashboard() {
   const sessions = useStore((s) => s.sessions);
   const dailyGoal = useStore((s) => s.dailyGoalMinutes);
   const pushToast = useStore((s) => s.pushToast);
+  const coins = useStore((s) => s.coins);
+  const addCoins = useStore((s) => s.addCoins);
+  const completeChallenge = useStore((s) => s.completeChallenge);
+  const completedChallenges = useStore((s) => s.completedChallenges);
 
   const [now, setNow] = useState(Date.now());
   const [note, setNote] = useState('');
@@ -79,6 +86,7 @@ export function Dashboard() {
       }
     }
     setClockedIn(true, timestamp);
+    sfx.clockIn();
     pushToast({
       title: `Inklockad! ${user.avatarEmoji}`,
       body: note ? `Plan: ${note}` : 'Lycka till idag!',
@@ -98,14 +106,38 @@ export function Dashboard() {
       end = r.session.end ?? Date.now();
     }
     const rec = recordSession({ start: sessionStart, end, samples, userId: user.id, note: note || undefined });
+    void pushSession(rec).catch(() => {});
     setClockedIn(false, null);
     setLiveSamples([]);
     setNote('');
+    const earnedCoins = Math.floor(rec.score.finalScore / 10);
+    if (earnedCoins > 0) addCoins(user.id, earnedCoins);
+    sfx.clockOut();
+    if (rec.score.focusFactor > 0.75) celebrate({ intensity: rec.score.focusFactor > 0.9 ? 'huge' : 'normal' });
     pushToast({
       title: `Utklockad efter ${formatHM(end - sessionStart)}`,
-      body: `Score: ${rec.score.finalScore} pts • Fokus: ${Math.round(rec.score.focusFactor * 100)}%`,
+      body: `Score: ${rec.score.finalScore} pts • +${earnedCoins} 🪙 • Fokus: ${Math.round(rec.score.focusFactor * 100)}%`,
       kind: rec.score.focusFactor > 0.7 ? 'celebrate' : 'info',
     });
+  }
+
+  const challenge = todaysChallenge();
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const challengeDone = user
+    ? completedChallenges.some((c) => c.userId === user.id && c.challengeId === challenge.id && c.date === todayKey)
+    : false;
+  const onFire = liveScore.focusFactor > 0.8 && clockedMinutes > 30;
+  const myCoins = user ? coins[user.id] ?? 0 : 0;
+
+  function claimChallenge() {
+    if (!user) return;
+    const ok = completeChallenge(user.id, challenge.id, todayKey);
+    if (ok) {
+      addCoins(user.id, challenge.rewardCoins);
+      sfx.coin();
+      celebrate({ intensity: 'mini' });
+      pushToast({ title: `Utmaning klar! ${challenge.emoji}`, body: `+${challenge.rewardCoins} 🪙`, kind: 'celebrate' });
+    }
   }
 
   if (!user) return null;
@@ -120,9 +152,19 @@ export function Dashboard() {
           </p>
         </div>
         <div className="head-stats">
+          {onFire && (
+            <div className="head-stat on-fire">
+              <div className="head-stat-value">🔥</div>
+              <div className="head-stat-label">On Fire!</div>
+            </div>
+          )}
           <div className="head-stat">
             <div className="head-stat-value">{streak}🔥</div>
             <div className="head-stat-label">Streak</div>
+          </div>
+          <div className="head-stat">
+            <div className="head-stat-value" style={{ color: 'var(--gold)' }}>{myCoins}</div>
+            <div className="head-stat-label">🪙 Mynt</div>
           </div>
           <div className="head-stat">
             <div className="head-stat-value">{todayStats?.score ?? 0}</div>
@@ -161,7 +203,26 @@ export function Dashboard() {
         </div>
       </div>
 
-      <div className="card goal-card">
+      <div className="card challenge-card">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ fontSize: 44, lineHeight: 1 }}>{challenge.emoji}</div>
+          <div style={{ flex: 1 }}>
+            <div className="stat-label">Dagens utmaning</div>
+            <div style={{ fontWeight: 700, fontSize: 16, marginTop: 2 }}>{challenge.title}</div>
+            <div style={{ color: 'var(--muted)', fontSize: 13 }}>{challenge.description}</div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ color: 'var(--gold)', fontWeight: 700, marginBottom: 8 }}>+{challenge.rewardCoins} 🪙</div>
+            {challengeDone ? (
+              <span className="pill work">✓ Klar</span>
+            ) : (
+              <button className="primary" onClick={claimChallenge}>Markera klar</button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="card goal-card" style={{ marginTop: 16 }}>
         <div className="goal-head">
           <div>
             <div className="stat-label">Dagligt mål</div>

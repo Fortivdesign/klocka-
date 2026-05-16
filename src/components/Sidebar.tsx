@@ -2,14 +2,17 @@ import { useEffect, useState } from 'react';
 import { useStore } from '../store';
 import { Avatar } from './Avatar';
 import { formatHMS } from '../lib/time';
+import { isCloudEnabled } from '../lib/sync';
 
-export type View = 'dashboard' | 'leaderboard' | 'weekly' | 'slacker' | 'screenshots' | 'achievements';
+export type View = 'dashboard' | 'leaderboard' | 'insights' | 'weekly' | 'slacker' | 'shop' | 'screenshots' | 'achievements';
 
 const items: { id: View; label: string; icon: string }[] = [
   { id: 'dashboard',    label: 'Dashboard',         icon: '⏱' },
   { id: 'leaderboard',  label: 'Leaderboard',       icon: '🏆' },
+  { id: 'insights',     label: 'Insikter',          icon: '📊' },
   { id: 'weekly',       label: 'Veckomöte',         icon: '📅' },
   { id: 'slacker',      label: 'Veckans Slacker',   icon: '🦥' },
+  { id: 'shop',         label: 'Shop',              icon: '🪙' },
   { id: 'screenshots',  label: 'Screenshots',       icon: '📸' },
   { id: 'achievements', label: 'Achievements',      icon: '🎖' },
 ];
@@ -34,6 +37,9 @@ export function Sidebar({ current, onChange }: { current: View; onChange: (v: Vi
       <div className="brand">
         <span className="brand-dot" />
         Klocka
+        <span className={`cloud-badge ${isCloudEnabled() ? 'on' : 'off'}`} title={isCloudEnabled() ? 'Synkar med Supabase' : 'Endast lokal data'}>
+          {isCloudEnabled() ? '☁️' : '💾'}
+        </span>
       </div>
 
       {user && (

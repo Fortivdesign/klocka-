@@ -28,6 +28,21 @@ export interface Toast {
   createdAt: number;
 }
 
+export interface Purchase {
+  id: string;
+  userId: string;
+  itemId: string;
+  cost: number;
+  at: number;
+}
+
+export interface ChallengeCompletion {
+  userId: string;
+  challengeId: string;
+  date: string;
+  at: number;
+}
+
 interface State {
   currentUser: TeamMember | null;
   team: TeamMember[];
@@ -41,6 +56,10 @@ interface State {
   dailyGoalMinutes: number;
   toasts: Toast[];
   demoSeeded: boolean;
+  coins: Record<string, number>;
+  purchases: Purchase[];
+  completedChallenges: ChallengeCompletion[];
+  unlockedAchievements: Record<string, string[]>;
   setUser: (u: TeamMember) => void;
   setTeam: (t: TeamMember[]) => void;
   setClockedIn: (b: boolean, sessionStart?: number | null) => void;
@@ -53,6 +72,10 @@ interface State {
   pushToast: (t: Omit<Toast, 'id' | 'createdAt'>) => void;
   dismissToast: (id: string) => void;
   markDemoSeeded: () => void;
+  addCoins: (userId: string, n: number) => void;
+  buyItem: (userId: string, itemId: string, cost: number) => boolean;
+  completeChallenge: (userId: string, challengeId: string, date: string) => boolean;
+  unlockAchievement: (userId: string, achievementId: string) => boolean;
 }
 
 const demoTeam: TeamMember[] = [
@@ -77,6 +100,10 @@ export const useStore = create<State>()(
       dailyGoalMinutes: 360,
       toasts: [],
       demoSeeded: false,
+      coins: {},
+      purchases: [],
+      completedChallenges: [],
+      unlockedAchievements: {},
       setUser: (u) => set({ currentUser: u }),
       setTeam: (t) => set({ team: t }),
       setClockedIn: (b, sessionStart = null) => set({ clockedIn: b, sessionStart }),
@@ -111,6 +138,35 @@ export const useStore = create<State>()(
       })),
       dismissToast: (id) => set((st) => ({ toasts: st.toasts.filter((x) => x.id !== id) })),
       markDemoSeeded: () => set({ demoSeeded: true }),
+      addCoins: (userId, n) =>
+        set((st) => ({ coins: { ...st.coins, [userId]: (st.coins[userId] ?? 0) + n } })),
+      buyItem: (userId, itemId, cost) => {
+        const st = useStore.getState();
+        if ((st.coins[userId] ?? 0) < cost) return false;
+        set({
+          coins: { ...st.coins, [userId]: (st.coins[userId] ?? 0) - cost },
+          purchases: [...st.purchases, { id: `p_${Date.now()}`, userId, itemId, cost, at: Date.now() }],
+        });
+        return true;
+      },
+      completeChallenge: (userId, challengeId, date) => {
+        const st = useStore.getState();
+        const exists = st.completedChallenges.some(
+          (c) => c.userId === userId && c.challengeId === challengeId && c.date === date,
+        );
+        if (exists) return false;
+        set({
+          completedChallenges: [...st.completedChallenges, { userId, challengeId, date, at: Date.now() }],
+        });
+        return true;
+      },
+      unlockAchievement: (userId, achievementId) => {
+        const st = useStore.getState();
+        const list = st.unlockedAchievements[userId] ?? [];
+        if (list.includes(achievementId)) return false;
+        set({ unlockedAchievements: { ...st.unlockedAchievements, [userId]: [...list, achievementId] } });
+        return true;
+      },
     }),
     {
       name: 'klocka-store',
@@ -124,6 +180,10 @@ export const useStore = create<State>()(
         awards: s.awards,
         dailyGoalMinutes: s.dailyGoalMinutes,
         demoSeeded: s.demoSeeded,
+        coins: s.coins,
+        purchases: s.purchases,
+        completedChallenges: s.completedChallenges,
+        unlockedAchievements: s.unlockedAchievements,
       }),
     },
   ),
