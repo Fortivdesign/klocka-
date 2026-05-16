@@ -1,0 +1,100 @@
+export type AppCategory = 'work' | 'communication' | 'fun' | 'unknown';
+
+export interface ActivitySample {
+  timestamp: number;
+  activeAppName: string;
+  activeWindowTitle: string;
+  category: AppCategory;
+  keystrokes: number;
+  mouseClicks: number;
+  isIdle: boolean;
+}
+
+export interface ClockEvent {
+  userId: string;
+  type: 'in' | 'out';
+  timestamp: number;
+  note?: string;
+}
+
+export interface ScreenshotMeta {
+  id: string;
+  userId: string;
+  timestamp: number;
+  thumbnailPath: string;
+  uploaded: boolean;
+  approvedByUser: boolean;
+  blurred: boolean;
+}
+
+export interface FocusScore {
+  clockedMinutes: number;
+  activeMinutes: number;
+  workCategoryMinutes: number;
+  funCategoryMinutes: number;
+  focusFactor: number;
+  finalScore: number;
+}
+
+export interface WeeklyPlan {
+  userId: string;
+  weekStart: string;
+  goals: string[];
+  submittedAt: number;
+}
+
+export interface WeeklyDelivery {
+  userId: string;
+  weekStart: string;
+  delivered: string[];
+  presentationUrl?: string;
+  submittedAt: number;
+}
+
+export interface SlackerAward {
+  weekStart: string;
+  userId: string;
+  title: string;
+  roast: string;
+  emoji: string;
+}
+
+export const APP_CATEGORIES: Record<string, AppCategory> = {
+  'Code': 'work',
+  'Visual Studio Code': 'work',
+  'Cursor': 'work',
+  'WebStorm': 'work',
+  'IntelliJ IDEA': 'work',
+  'Xcode': 'work',
+  'Figma': 'work',
+  'Terminal': 'work',
+  'iTerm2': 'work',
+  'Notion': 'work',
+  'Linear': 'work',
+  'Jira': 'work',
+  'Slack': 'communication',
+  'Microsoft Teams': 'communication',
+  'Discord': 'communication',
+  'zoom.us': 'communication',
+  'Mail': 'communication',
+  'FIFA 24': 'fun',
+  'EA SPORTS FC 24': 'fun',
+  'EA SPORTS FC 25': 'fun',
+  'UFC 5': 'fun',
+  'Steam': 'fun',
+  'Spotify': 'fun',
+  'YouTube': 'fun',
+  'TikTok': 'fun',
+  'Instagram': 'fun',
+  'Netflix': 'fun',
+  'Twitch': 'fun',
+};
+
+export function categorize(appName: string, windowTitle: string): AppCategory {
+  if (APP_CATEGORIES[appName]) return APP_CATEGORIES[appName];
+  const t = (windowTitle || '').toLowerCase();
+  if (/youtube|tiktok|instagram|netflix|twitch|reddit/.test(t)) return 'fun';
+  if (/github|gitlab|stack ?overflow|jira|linear|notion|docs\.google/.test(t)) return 'work';
+  if (/slack|teams|discord|zoom/.test(t)) return 'communication';
+  return 'unknown';
+}
