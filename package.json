@@ -2,8 +2,7 @@
   "name": "klocka",
   "version": "0.1.0",
   "description": "Team clock-in app med fokus-score, gamification och Veckans Slacker",
-  "main": "dist-electron/main.js",
-  "type": "module",
+  "main": "dist-electron/electron/main.js",
   "scripts": {
     "dev": "vite",
     "dev:electron": "concurrently -k \"vite\" \"wait-on tcp:5173 && tsc -p electron/tsconfig.json && cross-env NODE_ENV=development electron .\"",
