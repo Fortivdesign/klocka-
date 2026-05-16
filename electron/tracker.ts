@@ -1,8 +1,9 @@
+import { powerMonitor } from 'electron';
 import type { ActivitySample } from '../shared/types';
 import { categorize } from '../shared/types';
 
 const SAMPLE_INTERVAL_MS = 30_000;
-const IDLE_THRESHOLD_MS = 90_000;
+const IDLE_THRESHOLD_SEC = 90;
 
 type ActiveWinFn = () => Promise<{ owner: { name: string }; title: string } | undefined>;
 
@@ -24,12 +25,10 @@ export class ActivityTracker {
   private timer: NodeJS.Timeout | null = null;
   private keystrokes = 0;
   private mouseClicks = 0;
-  private lastInputAt = Date.now();
   private forcedIdle = false;
 
   start() {
     if (this.timer) return;
-    this.lastInputAt = Date.now();
     this.timer = setInterval(() => this.sample().catch(() => {}), SAMPLE_INTERVAL_MS);
   }
 
@@ -40,15 +39,18 @@ export class ActivityTracker {
 
   markIdle(idle: boolean) { this.forcedIdle = idle; }
 
-  registerKeystroke() { this.keystrokes += 1; this.lastInputAt = Date.now(); }
-  registerMouseClick() { this.mouseClicks += 1; this.lastInputAt = Date.now(); }
+  registerKeystroke() { this.keystrokes += 1; }
+  registerMouseClick() { this.mouseClicks += 1; }
 
   private async sample() {
     const aw = await getActiveWin();
     const info = await aw().catch(() => undefined);
     const appName = info?.owner?.name ?? 'unknown';
     const title = info?.title ?? '';
-    const idle = this.forcedIdle || Date.now() - this.lastInputAt > IDLE_THRESHOLD_MS;
+    const systemIdleSec = (() => {
+      try { return powerMonitor.getSystemIdleTime(); } catch { return 0; }
+    })();
+    const idle = this.forcedIdle || systemIdleSec > IDLE_THRESHOLD_SEC;
 
     const sample: ActivitySample = {
       timestamp: Date.now(),

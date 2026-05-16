@@ -52,7 +52,7 @@ function createWindow() {
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173');
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+    mainWindow.loadFile(path.join(__dirname, '../../dist/index.html'));
   }
 
   mainWindow.on('close', (e) => {
@@ -63,12 +63,23 @@ function createWindow() {
   });
 }
 
+function formatHMS(ms: number) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(s / 3600).toString().padStart(2, '0');
+  const m = Math.floor((s % 3600) / 60).toString().padStart(2, '0');
+  const ss = (s % 60).toString().padStart(2, '0');
+  return `${h}:${m}:${ss}`;
+}
+
 function createTray() {
   const icon = nativeImage.createEmpty();
   tray = new Tray(icon);
   const refresh = () => {
+    const elapsed = isClockedIn && currentSessionStart ? Date.now() - currentSessionStart : 0;
+    const title = isClockedIn ? `⏱ ${formatHMS(elapsed)}` : 'Klocka';
+    tray?.setTitle(title);
     const menu = Menu.buildFromTemplate([
-      { label: isClockedIn ? '🟢 Inklockad' : '⚪ Utklockad', enabled: false },
+      { label: isClockedIn ? `🟢 Inklockad · ${formatHMS(elapsed)}` : '⚪ Utklockad', enabled: false },
       { type: 'separator' },
       { label: 'Öppna Klocka', click: () => mainWindow?.show() },
       { label: isClockedIn ? 'Klocka ut' : 'Klocka in', click: () => mainWindow?.webContents.send('tray:toggle-clock') },
@@ -76,10 +87,10 @@ function createTray() {
       { label: 'Avsluta', click: () => { app.quit(); } },
     ]);
     tray?.setContextMenu(menu);
-    tray?.setToolTip(isClockedIn ? 'Klocka — inklockad' : 'Klocka');
+    tray?.setToolTip(isClockedIn ? `Klocka — ${formatHMS(elapsed)}` : 'Klocka');
   };
   refresh();
-  setInterval(refresh, 5000);
+  setInterval(refresh, 1000);
 }
 
 function setupIpc() {
@@ -131,6 +142,15 @@ function setupIpc() {
   });
 
   ipcMain.handle('screenshot:capture-now', async () => screenshotter?.captureNow());
+
+  ipcMain.handle('screenshot:data-url', async (_e, filePath: string) => {
+    try {
+      const buf = await fs.readFile(filePath);
+      return `data:image/png;base64,${buf.toString('base64')}`;
+    } catch {
+      return null;
+    }
+  });
 
   ipcMain.handle('app:user-data-dir', async () => userDataDir());
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useStore } from '../store';
 import { weekKey } from '../lib/time';
+import { Avatar } from '../components/Avatar';
 
 export function WeeklyMeeting() {
   const user = useStore((s) => s.currentUser);
@@ -101,7 +102,12 @@ export function WeeklyMeeting() {
               const match = planCount === 0 ? 0 : Math.min(1, delivCount / planCount);
               return (
                 <tr key={m.id}>
-                  <td>{m.avatarEmoji} {m.name}</td>
+                  <td>
+                    <div className="user-cell">
+                      <Avatar member={m} size={26} />
+                      <span>{m.name}</span>
+                    </div>
+                  </td>
                   <td>{planCount > 0 ? `${planCount} mål` : <span style={{ color: 'var(--muted)' }}>—</span>}</td>
                   <td>{delivCount > 0 ? `${delivCount} klar` : <span style={{ color: 'var(--muted)' }}>—</span>}</td>
                   <td>

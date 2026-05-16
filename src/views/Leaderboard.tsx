@@ -1,12 +1,11 @@
 import { useMemo } from 'react';
-import { useStore } from '../store';
+import { useStore, type TeamMember } from '../store';
 import { startOfWeek } from '../lib/time';
 import { computeFocusScore } from '@shared/scoring';
+import { Avatar } from '../components/Avatar';
 
 interface Row {
-  userId: string;
-  name: string;
-  emoji: string;
+  member: TeamMember;
   clockedH: number;
   workH: number;
   funH: number;
@@ -26,9 +25,7 @@ export function Leaderboard() {
       const clockedMinutes = userSessions.reduce((acc, s) => acc + (s.end - s.start) / 60_000, 0);
       const score = computeFocusScore({ clockedMinutes, samples });
       return {
-        userId: m.id,
-        name: m.name,
-        emoji: m.avatarEmoji,
+        member: m,
         clockedH: clockedMinutes / 60,
         workH: score.workCategoryMinutes / 60,
         funH: score.funCategoryMinutes / 60,
@@ -58,9 +55,14 @@ export function Leaderboard() {
           </thead>
           <tbody>
             {rows.map((r, i) => (
-              <tr key={r.userId}>
-                <td>{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</td>
-                <td>{r.emoji} {r.name}</td>
+              <tr key={r.member.id} className={i === 0 ? 'top-row' : ''}>
+                <td className="rank-cell">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}</td>
+                <td>
+                  <div className="user-cell">
+                    <Avatar member={r.member} size={28} />
+                    <span>{r.member.name}</span>
+                  </div>
+                </td>
                 <td>{r.clockedH.toFixed(1)}h</td>
                 <td><span className="pill work">{r.workH.toFixed(1)}h</span></td>
                 <td><span className="pill fun">{r.funH.toFixed(1)}h</span></td>
@@ -69,7 +71,7 @@ export function Leaderboard() {
                     <div style={{ width: `${r.focus * 100}%` }} />
                   </div>
                 </td>
-                <td><b>{r.score}</b></td>
+                <td><b style={{ fontSize: 16 }}>{r.score}</b></td>
               </tr>
             ))}
           </tbody>
@@ -83,8 +85,9 @@ export function Leaderboard() {
             Vinnaren får välja hela teamets nästa lunch och en heders-emoji bredvid sitt namn under nästa vecka.
           </p>
           {rows[0] && (
-            <div style={{ fontSize: 18 }}>
-              {rows[0].emoji} <b>{rows[0].name}</b> leder med <b>{rows[0].score}</b> pts.
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 16 }}>
+              <Avatar member={rows[0].member} size={32} showRing />
+              <span><b>{rows[0].member.name}</b> leder med <b>{rows[0].score}</b> pts.</span>
             </div>
           )}
         </div>

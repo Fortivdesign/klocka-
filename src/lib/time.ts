@@ -24,3 +24,24 @@ export function startOfWeek(d: Date = new Date()): Date {
 export function weekKey(d: Date = new Date()): string {
   return startOfWeek(d).toISOString().slice(0, 10);
 }
+
+export function startOfDay(d: Date = new Date()): Date {
+  const out = new Date(d);
+  out.setHours(0, 0, 0, 0);
+  return out;
+}
+
+export function calcStreak(sessionStarts: number[]): number {
+  if (!sessionStarts.length) return 0;
+  const days = new Set(sessionStarts.map((ts) => startOfDay(new Date(ts)).getTime()));
+  let streak = 0;
+  const today = startOfDay().getTime();
+  const dayMs = 24 * 60 * 60_000;
+  for (let i = 0; i < 365; i++) {
+    const day = today - i * dayMs;
+    if (days.has(day)) streak += 1;
+    else if (i === 0) continue;
+    else break;
+  }
+  return streak;
+}

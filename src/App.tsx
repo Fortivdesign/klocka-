@@ -8,12 +8,14 @@ import { SlackerView } from './views/SlackerView';
 import { ScreenshotsView } from './views/ScreenshotsView';
 import { Achievements } from './views/Achievements';
 import { ConsentGate } from './components/ConsentGate';
+import { Toasts } from './components/Toasts';
 
 export function App() {
   const [view, setView] = useState<View>('dashboard');
   const [consentChecked, setConsentChecked] = useState(false);
   const [consentGiven, setConsentGiven] = useState(false);
-  const sessions = useStore((s) => s.sessions);
+  const demoSeeded = useStore((s) => s.demoSeeded);
+  const markDemoSeeded = useStore((s) => s.markDemoSeeded);
 
   useEffect(() => {
     let mounted = true;
@@ -32,8 +34,19 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (sessions.length === 0) generateDemoData();
-  }, [sessions.length]);
+    if (!demoSeeded) {
+      generateDemoData();
+      markDemoSeeded();
+    }
+  }, [demoSeeded, markDemoSeeded]);
+
+  useEffect(() => {
+    const off = window.klocka?.on('tray:toggle-clock', () => {
+      const ev = new CustomEvent('klocka:toggle-clock');
+      window.dispatchEvent(ev);
+    });
+    return () => { off?.(); };
+  }, []);
 
   if (!consentChecked) return null;
   if (!consentGiven) {
@@ -54,6 +67,7 @@ export function App() {
         {view === 'screenshots' && <ScreenshotsView />}
         {view === 'achievements' && <Achievements />}
       </div>
+      <Toasts />
     </div>
   );
 }

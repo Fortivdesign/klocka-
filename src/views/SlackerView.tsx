@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useStore } from '../store';
 import { startOfWeek } from '../lib/time';
 import { computeFocusScore, pickRoastTitle } from '@shared/scoring';
+import { Avatar } from '../components/Avatar';
 
 export function SlackerView() {
   const team = useStore((s) => s.team);
@@ -29,7 +30,10 @@ export function SlackerView() {
       {loser && roast && (
         <div className="slacker-card">
           <div className="slacker-emoji">{roast.emoji}</div>
-          <div className="slacker-title">{loser.member.avatarEmoji} {loser.member.name} — {roast.title}</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, margin: '8px 0' }}>
+            <Avatar member={loser.member} size={44} />
+            <div className="slacker-title">{loser.member.name} — {roast.title}</div>
+          </div>
           <div className="slacker-roast">"{roast.roast}"</div>
           <div style={{ marginTop: 18, display: 'flex', justifyContent: 'center', gap: 24, color: 'var(--muted)' }}>
             <div>
@@ -67,7 +71,12 @@ export function SlackerView() {
               return (
                 <tr key={r.member.id}>
                   <td>{i + 1}</td>
-                  <td>{r.member.avatarEmoji} {r.member.name}</td>
+                  <td>
+                    <div className="user-cell">
+                      <Avatar member={r.member} size={26} />
+                      <span>{r.member.name}</span>
+                    </div>
+                  </td>
                   <td>{(r.clockedMinutes / 60).toFixed(1)}h</td>
                   <td>{(r.score.funCategoryMinutes / 60).toFixed(1)}h</td>
                   <td>{Math.round(r.score.focusFactor * 100)}%</td>

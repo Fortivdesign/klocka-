@@ -23,6 +23,8 @@ const api = {
       ipcRenderer.invoke('screenshot:approve', id, approved),
     captureNow: (): Promise<ScreenshotMeta | null> =>
       ipcRenderer.invoke('screenshot:capture-now'),
+    dataUrl: (filePath: string): Promise<string | null> =>
+      ipcRenderer.invoke('screenshot:data-url', filePath),
   },
   dialog: {
     selectFile: (): Promise<string | null> => ipcRenderer.invoke('dialog:select-file'),
