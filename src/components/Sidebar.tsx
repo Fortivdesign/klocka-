@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '../store';
 import { Avatar } from './Avatar';
+import { RoleBadges } from './RoleBadges';
 import { formatHMS } from '../lib/time';
 import { isCloudEnabled } from '../lib/sync';
 
@@ -44,17 +45,20 @@ export function Sidebar({ current, onChange }: { current: View; onChange: (v: Vi
 
       {user && (
         <div className="me-card">
-          <Avatar member={user} size={40} showRing active={clockedIn} />
-          <div style={{ minWidth: 0 }}>
-            <div className="me-name">{user.name}</div>
-            <div className="me-status">
-              {clockedIn ? (
-                <><span className="dot dot-green" /> {formatHMS(elapsed)}</>
-              ) : (
-                <><span className="dot dot-grey" /> Utklockad</>
-              )}
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <Avatar member={user} size={40} showRing active={clockedIn} />
+            <div style={{ minWidth: 0 }}>
+              <div className="me-name">{user.name}</div>
+              <div className="me-status">
+                {clockedIn ? (
+                  <><span className="dot dot-green" /> {formatHMS(elapsed)}</>
+                ) : (
+                  <><span className="dot dot-grey" /> Utklockad</>
+                )}
+              </div>
             </div>
           </div>
+          <RoleBadges roles={user.roles} size="sm" />
         </div>
       )}
 

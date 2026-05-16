@@ -1,23 +1,30 @@
-import type { ActivitySample, FocusScore } from './types';
+import type { ActivitySample, FocusScore, OfflineActivity } from './types';
 
 export interface ScoringInput {
   clockedMinutes: number;
   samples: ActivitySample[];
+  offline?: OfflineActivity[];
 }
 
 const SAMPLE_INTERVAL_SECONDS = 30;
 
-export function computeFocusScore({ clockedMinutes, samples }: ScoringInput): FocusScore {
+export function computeFocusScore({ clockedMinutes, samples, offline = [] }: ScoringInput): FocusScore {
   const activeSamples = samples.filter((s) => !s.isIdle);
   const workSamples = activeSamples.filter((s) => s.category === 'work');
   const funSamples = activeSamples.filter((s) => s.category === 'fun');
 
   const toMin = (count: number) => (count * SAMPLE_INTERVAL_SECONDS) / 60;
-  const activeMinutes = toMin(activeSamples.length);
-  const workCategoryMinutes = toMin(workSamples.length);
+  const offlineMinutes = offline.reduce((a, o) => a + (o.end - o.start) / 60_000, 0);
+  const offlineWorkMinutes = offline
+    .filter((o) => o.countsAs === 'work')
+    .reduce((a, o) => a + (o.end - o.start) / 60_000, 0);
+
+  const activeMinutes = toMin(activeSamples.length) + offlineMinutes;
+  const workCategoryMinutes = toMin(workSamples.length) + offlineWorkMinutes;
   const funCategoryMinutes = toMin(funSamples.length);
 
-  const activeRatio = clockedMinutes > 0 ? activeMinutes / clockedMinutes : 0;
+  const effectiveDenominator = Math.max(clockedMinutes, activeMinutes);
+  const activeRatio = effectiveDenominator > 0 ? activeMinutes / effectiveDenominator : 0;
   const workRatio = activeMinutes > 0 ? workCategoryMinutes / activeMinutes : 0;
   const funPenalty = activeMinutes > 0 ? funCategoryMinutes / activeMinutes : 0;
 
@@ -26,7 +33,7 @@ export function computeFocusScore({ clockedMinutes, samples }: ScoringInput): Fo
     Math.min(1, 0.4 * activeRatio + 0.7 * workRatio - 0.5 * funPenalty + 0.1),
   );
 
-  const finalScore = Math.round(clockedMinutes * focusFactor);
+  const finalScore = Math.round(Math.max(clockedMinutes, activeMinutes) * focusFactor);
 
   return {
     clockedMinutes,

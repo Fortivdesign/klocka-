@@ -7,17 +7,19 @@ import { Avatar } from '../components/Avatar';
 export function SlackerView() {
   const team = useStore((s) => s.team);
   const sessions = useStore((s) => s.sessions);
+  const offline = useStore((s) => s.offlineActivities);
 
   const rows = useMemo(() => {
     const weekStart = startOfWeek().getTime();
     return team.map((m) => {
       const userSessions = sessions.filter((s) => s.userId === m.id && s.start >= weekStart);
       const samples = userSessions.flatMap((s) => s.samples);
+      const userOffline = offline.filter((o) => o.userId === m.id && o.start >= weekStart);
       const clockedMinutes = userSessions.reduce((acc, s) => acc + (s.end - s.start) / 60_000, 0);
-      const score = computeFocusScore({ clockedMinutes, samples });
+      const score = computeFocusScore({ clockedMinutes, samples, offline: userOffline });
       return { member: m, score, clockedMinutes };
     }).sort((a, b) => a.score.finalScore - b.score.finalScore);
-  }, [team, sessions]);
+  }, [team, sessions, offline]);
 
   const loser = rows[0];
   const roast = loser ? pickRoastTitle(loser.member.id + new Date().toISOString().slice(0, 10)) : null;

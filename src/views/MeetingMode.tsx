@@ -12,6 +12,7 @@ const SLIDES: Slide[] = ['intro', 'leaderboard', 'summary', 'slacker', 'outro'];
 export function MeetingMode({ onExit }: { onExit: () => void }) {
   const team = useStore((s) => s.team);
   const sessions = useStore((s) => s.sessions);
+  const offline = useStore((s) => s.offlineActivities);
   const [slide, setSlide] = useState<Slide>('intro');
   const [summaryIdx, setSummaryIdx] = useState(0);
   const [autoplay, setAutoplay] = useState(true);
@@ -21,11 +22,12 @@ export function MeetingMode({ onExit }: { onExit: () => void }) {
     return team.map((m) => {
       const userSessions = sessions.filter((s) => s.userId === m.id && s.start >= weekStart);
       const samples = userSessions.flatMap((s) => s.samples);
+      const userOffline = offline.filter((o) => o.userId === m.id && o.start >= weekStart);
       const clocked = userSessions.reduce((a, s) => a + (s.end - s.start) / 60_000, 0);
-      const score = computeFocusScore({ clockedMinutes: clocked, samples });
+      const score = computeFocusScore({ clockedMinutes: clocked, samples, offline: userOffline });
       return { member: m, score, clockedH: clocked / 60 };
     }).sort((a, b) => b.score.finalScore - a.score.finalScore);
-  }, [team, sessions]);
+  }, [team, sessions, offline]);
 
   const winner = rows[0];
   const loser = rows[rows.length - 1];

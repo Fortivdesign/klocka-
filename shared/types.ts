@@ -10,6 +10,16 @@ export interface ActivitySample {
   isIdle: boolean;
 }
 
+export interface OfflineActivity {
+  id: string;
+  userId: string;
+  start: number;
+  end: number;
+  type: 'meeting' | 'call' | 'customer-visit' | 'workshop' | 'planning' | 'other';
+  description: string;
+  countsAs: 'work' | 'communication';
+}
+
 export interface ClockEvent {
   userId: string;
   type: 'in' | 'out';
@@ -97,4 +107,20 @@ export function categorize(appName: string, windowTitle: string): AppCategory {
   if (/github|gitlab|stack ?overflow|jira|linear|notion|docs\.google/.test(t)) return 'work';
   if (/slack|teams|discord|zoom/.test(t)) return 'communication';
   return 'unknown';
+}
+
+export interface RoleCategorizeContext {
+  workApps: Set<string>;
+  workTitlePatterns: RegExp[];
+}
+
+export function categorizeForRole(
+  appName: string,
+  windowTitle: string,
+  ctx: RoleCategorizeContext,
+): AppCategory {
+  if (ctx.workApps.has(appName)) return 'work';
+  const t = (windowTitle || '').toLowerCase();
+  if (ctx.workTitlePatterns.some((re) => re.test(t))) return 'work';
+  return categorize(appName, windowTitle);
 }

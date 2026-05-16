@@ -6,6 +6,9 @@ import type { ActivitySample } from '@shared/types';
 import { todaysChallenge } from '../lib/challenges';
 import { celebrate, sfx } from '../lib/effects';
 import { pushSession } from '../lib/sync';
+import { ROLES } from '@shared/roles';
+import { OfflineLog } from '../components/OfflineLog';
+import { RoleBadges } from '../components/RoleBadges';
 
 export function Dashboard() {
   const user = useStore((s) => s.currentUser);
@@ -121,7 +124,15 @@ export function Dashboard() {
     });
   }
 
-  const challenge = todaysChallenge();
+  const challenge = useMemo(() => {
+    if (!user || !user.roles.length) return todaysChallenge();
+    const pool = user.roles.flatMap((r) => ROLES[r]?.challenges.map((c) => ({ ...c, id: `${r}:${c.title}` })) ?? []);
+    if (!pool.length) return todaysChallenge();
+    const key = `${user.id}-${new Date().toISOString().slice(0, 10)}`;
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) | 0;
+    return pool[Math.abs(hash) % pool.length];
+  }, [user]);
   const todayKey = new Date().toISOString().slice(0, 10);
   const challengeDone = user
     ? completedChallenges.some((c) => c.userId === user.id && c.challengeId === challenge.id && c.date === todayKey)
@@ -150,6 +161,7 @@ export function Dashboard() {
           <p className="subtitle">
             {clockedIn ? 'Du är inklockad. Fokus är allt.' : 'Inte inklockad. Dags att börja jobba?'}
           </p>
+          <RoleBadges roles={user.roles} size="md" />
         </div>
         <div className="head-stats">
           {onFire && (
@@ -270,6 +282,10 @@ export function Dashboard() {
             : liveScore.focusFactor > 0.25 ? '😬 Lite distraherad.'
             : '🦥 Hmm. Dags att rensa flikar?'}
         </div>
+      </div>
+
+      <div style={{ marginTop: 16 }}>
+        <OfflineLog />
       </div>
     </>
   );

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useStore } from '../store';
 import { computeFocusScore } from '@shared/scoring';
+import { ROLES } from '@shared/roles';
 
 interface Achievement {
   id: string;
@@ -24,13 +25,15 @@ const ACHIEVEMENTS: Achievement[] = [
 export function Achievements() {
   const user = useStore((s) => s.currentUser);
   const sessions = useStore((s) => s.sessions);
+  const offline = useStore((s) => s.offlineActivities);
 
   const unlocked = useMemo(() => {
     if (!user) return new Set<string>();
     const userSessions = sessions.filter((s) => s.userId === user.id);
     const samples = userSessions.flatMap((s) => s.samples);
+    const userOffline = offline.filter((o) => o.userId === user.id);
     const clockedMinutes = userSessions.reduce((acc, s) => acc + (s.end - s.start) / 60_000, 0);
-    const score = computeFocusScore({ clockedMinutes, samples });
+    const score = computeFocusScore({ clockedMinutes, samples, offline: userOffline });
     const ctx = {
       totalH: clockedMinutes / 60,
       workH: score.workCategoryMinutes / 60,
@@ -38,12 +41,14 @@ export function Achievements() {
       sessions: userSessions.length,
     };
     return new Set(ACHIEVEMENTS.filter((a) => a.test(ctx)).map((a) => a.id));
-  }, [user, sessions]);
+  }, [user, sessions, offline]);
+
+  const roleTitle = user?.roles.map((r) => ROLES[r]?.label).filter(Boolean).join(' · ') ?? '';
 
   return (
     <>
       <h1 className="h1">🎖️ Achievements</h1>
-      <p className="subtitle">Lås upp medaljer genom att jobba. Ja, riktigt jobba.</p>
+      <p className="subtitle">Lås upp medaljer genom att jobba. Ja, riktigt jobba.{roleTitle && ` · ${roleTitle}`}</p>
 
       <div className="grid cols-3">
         {ACHIEVEMENTS.map((a) => {

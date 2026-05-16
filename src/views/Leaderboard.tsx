@@ -3,6 +3,7 @@ import { useStore, type TeamMember } from '../store';
 import { startOfWeek } from '../lib/time';
 import { computeFocusScore } from '@shared/scoring';
 import { Avatar } from '../components/Avatar';
+import { RoleBadges } from '../components/RoleBadges';
 
 interface Row {
   member: TeamMember;
@@ -16,14 +17,16 @@ interface Row {
 export function Leaderboard() {
   const team = useStore((s) => s.team);
   const sessions = useStore((s) => s.sessions);
+  const offline = useStore((s) => s.offlineActivities);
 
   const rows = useMemo<Row[]>(() => {
     const weekStart = startOfWeek().getTime();
     return team.map((m) => {
       const userSessions = sessions.filter((s) => s.userId === m.id && s.start >= weekStart);
       const samples = userSessions.flatMap((s) => s.samples);
+      const userOffline = offline.filter((o) => o.userId === m.id && o.start >= weekStart);
       const clockedMinutes = userSessions.reduce((acc, s) => acc + (s.end - s.start) / 60_000, 0);
-      const score = computeFocusScore({ clockedMinutes, samples });
+      const score = computeFocusScore({ clockedMinutes, samples, offline: userOffline });
       return {
         member: m,
         clockedH: clockedMinutes / 60,
@@ -33,12 +36,12 @@ export function Leaderboard() {
         score: score.finalScore,
       };
     }).sort((a, b) => b.score - a.score);
-  }, [team, sessions]);
+  }, [team, sessions, offline]);
 
   return (
     <>
       <h1 className="h1">🏆 Leaderboard</h1>
-      <p className="subtitle">Veckans tävling. Score = klockad tid × fokus-faktor.</p>
+      <p className="subtitle">Veckans tävling. Score anpassas efter roll — säljarens HubSpot räknas som jobb, designerns Figma också, devens VS Code likaså.</p>
 
       <div className="card">
         <table>
@@ -60,7 +63,10 @@ export function Leaderboard() {
                 <td>
                   <div className="user-cell">
                     <Avatar member={r.member} size={28} />
-                    <span>{r.member.name}</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <span>{r.member.name}</span>
+                      <RoleBadges roles={r.member.roles} size="sm" />
+                    </div>
                   </div>
                 </td>
                 <td>{r.clockedH.toFixed(1)}h</td>
