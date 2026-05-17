@@ -1,28 +1,47 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useStore } from '../store';
 import { weekKey } from '../lib/time';
 import { Avatar } from '../components/Avatar';
+import { RoleBadges } from '../components/RoleBadges';
+import type { TaskStatus } from '@shared/types';
+
+const STATUS_EMOJI: Record<TaskStatus, string> = {
+  open: '⚪', 'in-progress': '🟡', blocked: '🔴', done: '✅',
+};
 
 export function WeeklyMeeting() {
   const user = useStore((s) => s.currentUser);
   const team = useStore((s) => s.team);
-  const plans = useStore((s) => s.weeklyPlans);
+  const tasks = useStore((s) => s.tasks);
   const deliveries = useStore((s) => s.weeklyDeliveries);
-  const addPlan = useStore((s) => s.addPlan);
   const addDelivery = useStore((s) => s.addDelivery);
 
   const wk = weekKey();
-  const [planText, setPlanText] = useState('');
-  const [deliveryText, setDeliveryText] = useState('');
   const [presentation, setPresentation] = useState<string | null>(null);
+  const [openMember, setOpenMember] = useState<string | null>(user?.id ?? null);
 
-  function submitPlan() {
-    if (!user) return;
-    const goals = planText.split('\n').map((s) => s.trim()).filter(Boolean);
-    if (!goals.length) return;
-    addPlan({ userId: user.id, weekStart: wk, goals, submittedAt: Date.now() });
-    setPlanText('');
-  }
+  const memberStats = useMemo(() => {
+    return team.map((m) => {
+      const mine = tasks.filter((t) => t.userId === m.id && t.weekStart === wk);
+      const done = mine.filter((t) => t.status === 'done').length;
+      const inProgress = mine.filter((t) => t.status === 'in-progress').length;
+      const blocked = mine.filter((t) => t.status === 'blocked').length;
+      const open = mine.filter((t) => t.status === 'open').length;
+      return {
+        member: m,
+        tasks: mine.sort((a, b) => {
+          const ord = { 'done': 3, 'blocked': 0, 'in-progress': 1, 'open': 2 };
+          return ord[a.status] - ord[b.status];
+        }),
+        total: mine.length,
+        done,
+        inProgress,
+        blocked,
+        open,
+        progress: mine.length > 0 ? (done / mine.length) * 100 : 0,
+      };
+    });
+  }, [team, tasks, wk]);
 
   async function pickPresentation() {
     const api = window.klocka;
@@ -33,8 +52,8 @@ export function WeeklyMeeting() {
 
   function submitDelivery() {
     if (!user) return;
-    const delivered = deliveryText.split('\n').map((s) => s.trim()).filter(Boolean);
-    if (!delivered.length && !presentation) return;
+    const myTasks = tasks.filter((t) => t.userId === user.id && t.weekStart === wk);
+    const delivered = myTasks.filter((t) => t.status === 'done').map((t) => t.title);
     addDelivery({
       userId: user.id,
       weekStart: wk,
@@ -42,87 +61,96 @@ export function WeeklyMeeting() {
       presentationUrl: presentation ?? undefined,
       submittedAt: Date.now(),
     });
-    setDeliveryText('');
     setPresentation(null);
   }
 
+  const myDelivery = deliveries.find((d) => d.userId === user?.id && d.weekStart === wk);
+
   return (
     <>
-      <h1 className="h1">📅 Veckomöte</h1>
-      <p className="subtitle">Vad sa du att du skulle göra — och vad gjorde du faktiskt?</p>
-
-      <div className="grid cols-2">
-        <div className="card">
-          <h3 style={{ marginTop: 0 }}>📝 Min veckoplan ({wk})</h3>
-          <p style={{ color: 'var(--muted)', fontSize: 12 }}>Ett mål per rad.</p>
-          <textarea
-            rows={6}
-            placeholder={'Färdigställa onboarding-flowet\nFixa bugg i exporten\nPair med Anna på sökningen'}
-            value={planText}
-            onChange={(e) => setPlanText(e.target.value)}
-          />
-          <button className="primary" onClick={submitPlan} style={{ marginTop: 10 }}>Skicka plan</button>
-        </div>
-
-        <div className="card">
-          <h3 style={{ marginTop: 0 }}>🎤 Min leverans + presentation</h3>
-          <p style={{ color: 'var(--muted)', fontSize: 12 }}>Vad blev faktiskt klart? Bifoga gärna presentationen.</p>
-          <textarea
-            rows={5}
-            placeholder={'Onboarding deployad till staging\nBugg fixad, PR mergead'}
-            value={deliveryText}
-            onChange={(e) => setDeliveryText(e.target.value)}
-          />
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10 }}>
-            <button onClick={pickPresentation}>📎 Välj fil (.pdf, .key, .pptx)</button>
-            {presentation && <span style={{ fontSize: 12, color: 'var(--muted)' }}>{presentation.split('/').pop()}</span>}
-          </div>
-          <button className="success" onClick={submitDelivery} style={{ marginTop: 10 }}>Skicka leverans</button>
+      <div className="page-head">
+        <div>
+          <h1 className="h1">📅 Veckomöte</h1>
+          <p className="subtitle">Allas plan + status, sida vid sida. Bocka av i din veckoplan; här ses summan.</p>
         </div>
       </div>
 
-      <div className="card" style={{ marginTop: 22 }}>
-        <h3 style={{ marginTop: 0 }}>📊 Plan vs leverans — denna vecka</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Person</th>
-              <th>Plan</th>
-              <th>Levererat</th>
-              <th>Match</th>
-              <th>Pres.</th>
-            </tr>
-          </thead>
-          <tbody>
-            {team.map((m) => {
-              const plan = plans.find((p) => p.userId === m.id && p.weekStart === wk);
-              const delivery = deliveries.find((d) => d.userId === m.id && d.weekStart === wk);
-              const planCount = plan?.goals.length ?? 0;
-              const delivCount = delivery?.delivered.length ?? 0;
-              const match = planCount === 0 ? 0 : Math.min(1, delivCount / planCount);
-              return (
-                <tr key={m.id}>
-                  <td>
-                    <div className="user-cell">
-                      <Avatar member={m} size={26} />
-                      <span>{m.name}</span>
+      <div className="card" style={{ marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ fontSize: 28 }}>🎤</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 700 }}>Bifoga din presentation för veckomötet</div>
+            <div style={{ color: 'var(--muted)', fontSize: 12 }}>
+              {myDelivery?.presentationUrl
+                ? `Bifogad: ${myDelivery.presentationUrl.split('/').pop()}`
+                : 'PDF, Keynote eller PowerPoint. Levereras tillsammans med dina avbockade uppgifter.'}
+            </div>
+          </div>
+          <button onClick={pickPresentation}>📎 Välj fil</button>
+          {presentation && <span style={{ fontSize: 12, color: 'var(--muted)' }}>{presentation.split('/').pop()}</span>}
+          <button className="success" onClick={submitDelivery}>Skicka leverans</button>
+        </div>
+      </div>
+
+      <div className="team-plans">
+        {memberStats.map((s) => {
+          const isOpen = openMember === s.member.id;
+          return (
+            <div key={s.member.id} className="card team-plan-card">
+              <button className="team-plan-head" onClick={() => setOpenMember(isOpen ? null : s.member.id)}>
+                <Avatar member={s.member} size={42} />
+                <div style={{ flex: 1, textAlign: 'left' }}>
+                  <div style={{ fontWeight: 700, fontSize: 15 }}>{s.member.name}</div>
+                  <RoleBadges roles={s.member.roles} size="sm" />
+                </div>
+                <div className="team-plan-stats">
+                  <span className="pill work">{s.done} klart</span>
+                  {s.inProgress > 0 && <span className="pill">{s.inProgress} pågår</span>}
+                  {s.blocked > 0 && <span className="pill fun">{s.blocked} blockerad</span>}
+                  {s.open > 0 && <span className="pill">{s.open} öppen</span>}
+                </div>
+                <div className="team-plan-progress">
+                  <div className="progress" style={{ width: 120 }}>
+                    <div className="progress-fill" style={{ width: `${s.progress}%` }} />
+                  </div>
+                  <span style={{ fontSize: 12, color: 'var(--muted)', minWidth: 38, textAlign: 'right' }}>
+                    {Math.round(s.progress)}%
+                  </span>
+                </div>
+                <span className="team-plan-chevron">{isOpen ? '▾' : '▸'}</span>
+              </button>
+
+              {isOpen && (
+                <div className="team-plan-tasks">
+                  {s.tasks.length === 0 ? (
+                    <div style={{ color: 'var(--muted)', fontSize: 13, padding: '12px 0' }}>
+                      Inga uppgifter inlagda för veckan än.
                     </div>
-                  </td>
-                  <td>{planCount > 0 ? `${planCount} mål` : <span style={{ color: 'var(--muted)' }}>—</span>}</td>
-                  <td>{delivCount > 0 ? `${delivCount} klar` : <span style={{ color: 'var(--muted)' }}>—</span>}</td>
-                  <td>
-                    {planCount > 0 ? (
-                      <div className="score-bar" style={{ width: 100 }}>
-                        <div style={{ width: `${match * 100}%` }} />
+                  ) : (
+                    s.tasks.map((t) => (
+                      <div key={t.id} className={`team-task status-${t.status}`}>
+                        <span style={{ fontSize: 16 }}>{STATUS_EMOJI[t.status]}</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: t.status === 'done' ? 400 : 600, textDecoration: t.status === 'done' ? 'line-through' : 'none', color: t.status === 'done' ? 'var(--muted)' : 'var(--text)' }}>
+                            {t.title}
+                          </div>
+                          {t.updates.length > 0 && (
+                            <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: 2 }}>
+                              💬 {t.updates[t.updates.length - 1].text || `${t.updates.length} statusbyten`}
+                            </div>
+                          )}
+                        </div>
+                        {t.updates.length > 0 && (
+                          <span className="pill" style={{ fontSize: 10 }}>{t.updates.length} updates</span>
+                        )}
                       </div>
-                    ) : '—'}
-                  </td>
-                  <td>{delivery?.presentationUrl ? '📎' : '—'}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </>
   );

@@ -5,14 +5,16 @@ import { startOfWeek } from '../lib/time';
 import { computeFocusScore, pickRoastTitle } from '@shared/scoring';
 import { summarizeWeek, speakSummary } from '../lib/summary';
 import { speak, sfx, celebrate } from '../lib/effects';
+import { weekKey } from '../lib/time';
 
-type Slide = 'intro' | 'leaderboard' | 'summary' | 'slacker' | 'outro';
-const SLIDES: Slide[] = ['intro', 'leaderboard', 'summary', 'slacker', 'outro'];
+type Slide = 'intro' | 'leaderboard' | 'plans' | 'summary' | 'slacker' | 'outro';
+const SLIDES: Slide[] = ['intro', 'leaderboard', 'plans', 'summary', 'slacker', 'outro'];
 
 export function MeetingMode({ onExit }: { onExit: () => void }) {
   const team = useStore((s) => s.team);
   const sessions = useStore((s) => s.sessions);
   const offline = useStore((s) => s.offlineActivities);
+  const tasks = useStore((s) => s.tasks);
   const [slide, setSlide] = useState<Slide>('intro');
   const [summaryIdx, setSummaryIdx] = useState(0);
   const [autoplay, setAutoplay] = useState(true);
@@ -31,6 +33,20 @@ export function MeetingMode({ onExit }: { onExit: () => void }) {
 
   const winner = rows[0];
   const loser = rows[rows.length - 1];
+  const wk = weekKey();
+  const plans = useMemo(() => {
+    return team.map((m) => {
+      const mine = tasks.filter((t) => t.userId === m.id && t.weekStart === wk);
+      const done = mine.filter((t) => t.status === 'done').length;
+      return {
+        member: m,
+        tasks: mine,
+        done,
+        total: mine.length,
+        progress: mine.length > 0 ? done / mine.length : 0,
+      };
+    });
+  }, [team, tasks, wk]);
   const summaries = useMemo(
     () => team.map((m) => ({ member: m, text: summarizeWeek(m, sessions) })),
     [team, sessions],
@@ -122,6 +138,29 @@ export function MeetingMode({ onExit }: { onExit: () => void }) {
                 <Avatar member={r.member} size={64} showRing={i === 0} />
                 <div className="row-big-name">{r.member.name}</div>
                 <div className="row-big-score">{r.score.finalScore} <span>pts</span></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {slide === 'plans' && (
+        <div className="meeting-slide fade-in">
+          <div className="big-eyebrow">📋 Veckans plan — vad har vi gjort?</div>
+          <div className="plans-big">
+            {plans.map((p, i) => (
+              <div key={p.member.id} className="plan-big-row" style={{ animationDelay: `${i * 150}ms` }}>
+                <Avatar member={p.member} size={48} />
+                <div className="plan-big-info">
+                  <div className="plan-big-name">{p.member.name}</div>
+                  <div className="plan-big-stats">{p.done}/{p.total} klart</div>
+                </div>
+                <div className="plan-big-progress">
+                  <div className="progress" style={{ height: 14 }}>
+                    <div className="progress-fill" style={{ width: `${p.progress * 100}%` }} />
+                  </div>
+                </div>
+                <div className="plan-big-pct">{Math.round(p.progress * 100)}%</div>
               </div>
             ))}
           </div>

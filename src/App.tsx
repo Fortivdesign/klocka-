@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useStore, generateDemoData } from './store';
 import { Sidebar, type View } from './components/Sidebar';
 import { Dashboard } from './views/Dashboard';
+import { WeeklyPlan } from './views/WeeklyPlan';
 import { Leaderboard } from './views/Leaderboard';
 import { Insights } from './views/Insights';
 import { WeeklyMeeting } from './views/WeeklyMeeting';
@@ -73,7 +74,8 @@ export function App() {
         <button className="meeting-launch" onClick={() => setMeetingMode(true)} title="Starta presentation för veckomötet (storbild)">
           🎬 Presentation
         </button>
-        {view === 'dashboard' && <Dashboard />}
+        {view === 'dashboard' && <Dashboard onNavigate={setView} />}
+        {view === 'plan' && <WeeklyPlan />}
         {view === 'leaderboard' && <Leaderboard />}
         {view === 'insights' && <Insights />}
         {view === 'weekly' && <WeeklyMeeting />}

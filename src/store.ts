@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { ActivitySample, FocusScore, WeeklyPlan, WeeklyDelivery, SlackerAward, OfflineActivity } from '@shared/types';
+import type { ActivitySample, FocusScore, WeeklyPlan, WeeklyDelivery, SlackerAward, OfflineActivity, WeeklyTask, TaskStatus, TaskUpdate } from '@shared/types';
 import type { RoleId } from '@shared/roles';
 import { roleWorkApps, roleTitlePatterns } from '@shared/roles';
 import { categorizeForRole } from '@shared/types';
@@ -65,6 +65,7 @@ interface State {
   completedChallenges: ChallengeCompletion[];
   unlockedAchievements: Record<string, string[]>;
   offlineActivities: OfflineActivity[];
+  tasks: WeeklyTask[];
   setUser: (u: TeamMember) => void;
   setTeam: (t: TeamMember[]) => void;
   setClockedIn: (b: boolean, sessionStart?: number | null) => void;
@@ -84,6 +85,11 @@ interface State {
   addOfflineActivity: (a: Omit<OfflineActivity, 'id'>) => OfflineActivity;
   removeOfflineActivity: (id: string) => void;
   recategorizeSample: (sample: ActivitySample, member: TeamMember | null) => ActivitySample;
+  addTask: (t: Pick<WeeklyTask, 'userId' | 'weekStart' | 'title'> & Partial<Pick<WeeklyTask, 'description' | 'priority' | 'attachment'>>) => WeeklyTask;
+  updateTaskStatus: (taskId: string, status: TaskStatus, note?: string) => void;
+  addTaskUpdate: (taskId: string, text: string) => TaskUpdate | null;
+  removeTask: (taskId: string) => void;
+  editTask: (taskId: string, patch: Partial<Pick<WeeklyTask, 'title' | 'description' | 'priority'>>) => void;
 }
 
 export function recategorizeForMember(sample: ActivitySample, member: TeamMember | null): ActivitySample {
@@ -120,6 +126,7 @@ export const useStore = create<State>()(
       completedChallenges: [],
       unlockedAchievements: {},
       offlineActivities: [],
+      tasks: [],
       setUser: (u) => set({ currentUser: u }),
       setTeam: (t) => set({ team: t }),
       setClockedIn: (b, sessionStart = null) => set({ clockedIn: b, sessionStart }),
@@ -195,24 +202,79 @@ export const useStore = create<State>()(
       removeOfflineActivity: (id) =>
         set((st) => ({ offlineActivities: st.offlineActivities.filter((x) => x.id !== id) })),
       recategorizeSample: (sample, member) => recategorizeForMember(sample, member),
+      addTask: (input) => {
+        const task: WeeklyTask = {
+          id: `t_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          userId: input.userId,
+          weekStart: input.weekStart,
+          title: input.title,
+          description: input.description,
+          status: 'open',
+          priority: input.priority ?? 'normal',
+          createdAt: Date.now(),
+          updates: [],
+          attachment: input.attachment,
+        };
+        set((st) => ({ tasks: [...st.tasks, task] }));
+        return task;
+      },
+      updateTaskStatus: (taskId, status, note) => {
+        set((st) => ({
+          tasks: st.tasks.map((t) => {
+            if (t.id !== taskId) return t;
+            const update: TaskUpdate = {
+              id: `tu_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+              at: Date.now(),
+              text: note ?? '',
+              statusBefore: t.status,
+              statusAfter: status,
+            };
+            return {
+              ...t,
+              status,
+              completedAt: status === 'done' ? Date.now() : undefined,
+              updates: [...t.updates, update],
+            };
+          }),
+        }));
+      },
+      addTaskUpdate: (taskId, text) => {
+        const trimmed = text.trim();
+        if (!trimmed) return null;
+        const update: TaskUpdate = {
+          id: `tu_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          at: Date.now(),
+          text: trimmed,
+        };
+        set((st) => ({
+          tasks: st.tasks.map((t) => (t.id === taskId ? { ...t, updates: [...t.updates, update] } : t)),
+        }));
+        return update;
+      },
+      removeTask: (taskId) => set((st) => ({ tasks: st.tasks.filter((t) => t.id !== taskId) })),
+      editTask: (taskId, patch) =>
+        set((st) => ({ tasks: st.tasks.map((t) => (t.id === taskId ? { ...t, ...patch } : t)) })),
     }),
     {
       name: 'klocka-store',
-      version: 2,
+      version: 3,
       storage: createJSONStorage(() => localStorage),
       migrate: (persisted) => {
         const p = persisted as Partial<State> & { team?: TeamMember[] };
+        const base: Partial<State> = { tasks: p?.tasks ?? [] };
         if (p?.team && p.team.some((m) => !('roles' in m) || !m.roles)) {
           return {
             ...p,
+            ...base,
             team: demoTeam,
             currentUser: demoTeam.find((m) => m.id === p.currentUser?.id) ?? demoTeam[0],
             sessions: [],
             demoSeeded: false,
             offlineActivities: [],
+            tasks: [],
           } as Partial<State>;
         }
-        return p as Partial<State>;
+        return { ...(p as Partial<State>), ...base };
       },
       partialize: (s) => ({
         currentUser: s.currentUser,
@@ -228,6 +290,7 @@ export const useStore = create<State>()(
         completedChallenges: s.completedChallenges,
         unlockedAchievements: s.unlockedAchievements,
         offlineActivities: s.offlineActivities,
+        tasks: s.tasks,
       }),
     },
   ),
@@ -333,5 +396,35 @@ export function generateDemoData() {
         });
       }
     }
+  });
+
+  const wkStart = new Date();
+  wkStart.setDate(wkStart.getDate() - ((wkStart.getDay() + 6) % 7));
+  wkStart.setHours(0, 0, 0, 0);
+  const wk = wkStart.toISOString().slice(0, 10);
+
+  const DEMO_TASKS: { userId: string; title: string; status: 'open' | 'in-progress' | 'done' | 'blocked'; updates?: string[] }[] = [
+    { userId: 'u_teo',     title: 'Stänga avtal med Acme AB',          status: 'in-progress', updates: ['Skickat reviderat avtal.', 'Väntar på signatur, ringer fredag.'] },
+    { userId: 'u_teo',     title: 'Boka 8 demos',                       status: 'in-progress', updates: ['5 av 8 bokade.'] },
+    { userId: 'u_teo',     title: 'Board-prep deck',                    status: 'open' },
+    { userId: 'u_teo',     title: 'Q2-plan med teamet',                 status: 'done' },
+    { userId: 'u_oscar',   title: 'Mergea PR #142 (klocka-skeleton)',  status: 'done' },
+    { userId: 'u_oscar',   title: 'Refaktor av session-store',           status: 'in-progress', updates: ['Halva storen klar.'] },
+    { userId: 'u_oscar',   title: 'Review av Freddies rapport-PR',      status: 'open' },
+    { userId: 'u_oscar',   title: 'Sätt upp deploy-pipeline',            status: 'blocked', updates: ['Väntar på AWS-access från Freddie.'] },
+    { userId: 'u_viktor',  title: 'Q2-kampanj hero-design',              status: 'in-progress', updates: ['Första utkast i Figma.'] },
+    { userId: 'u_viktor',  title: '3 LinkedIn-posts',                    status: 'in-progress', updates: ['1 publicerad.'] },
+    { userId: 'u_viktor',  title: 'Storyboard till video-reel',          status: 'open' },
+    { userId: 'u_freddie', title: 'Stänga aprils bokföring',              status: 'done' },
+    { userId: 'u_freddie', title: 'Cashflow-prognos Q2',                  status: 'in-progress' },
+    { userId: 'u_freddie', title: 'Faktura-jakt — 12 obetalda',            status: 'open' },
+  ];
+
+  DEMO_TASKS.forEach((t) => {
+    const task = store.addTask({ userId: t.userId, weekStart: wk, title: t.title });
+    if (t.status !== 'open') {
+      store.updateTaskStatus(task.id, t.status);
+    }
+    (t.updates ?? []).forEach((u) => store.addTaskUpdate(task.id, u));
   });
 }

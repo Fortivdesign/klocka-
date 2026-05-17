@@ -5,10 +5,11 @@ import { RoleBadges } from './RoleBadges';
 import { formatHMS } from '../lib/time';
 import { isCloudEnabled } from '../lib/sync';
 
-export type View = 'dashboard' | 'leaderboard' | 'insights' | 'weekly' | 'slacker' | 'shop' | 'screenshots' | 'achievements';
+export type View = 'dashboard' | 'plan' | 'leaderboard' | 'insights' | 'weekly' | 'slacker' | 'shop' | 'screenshots' | 'achievements';
 
 const items: { id: View; label: string; icon: string }[] = [
   { id: 'dashboard',    label: 'Dashboard',         icon: '⏱' },
+  { id: 'plan',         label: 'Min veckoplan',     icon: '🗒' },
   { id: 'leaderboard',  label: 'Leaderboard',       icon: '🏆' },
   { id: 'insights',     label: 'Insikter',          icon: '📊' },
   { id: 'weekly',       label: 'Veckomöte',         icon: '📅' },

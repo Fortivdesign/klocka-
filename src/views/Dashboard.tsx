@@ -9,9 +9,13 @@ import { pushSession } from '../lib/sync';
 import { ROLES } from '@shared/roles';
 import { OfflineLog } from '../components/OfflineLog';
 import { RoleBadges } from '../components/RoleBadges';
+import { weekKey } from '../lib/time';
+import type { View } from '../components/Sidebar';
 
-export function Dashboard() {
+export function Dashboard({ onNavigate }: { onNavigate?: (v: View) => void }) {
   const user = useStore((s) => s.currentUser);
+  const tasks = useStore((s) => s.tasks);
+  const updateTaskStatus = useStore((s) => s.updateTaskStatus);
   const clockedIn = useStore((s) => s.clockedIn);
   const sessionStart = useStore((s) => s.sessionStart);
   const setClockedIn = useStore((s) => s.setClockedIn);
@@ -140,6 +144,43 @@ export function Dashboard() {
   const onFire = liveScore.focusFactor > 0.8 && clockedMinutes > 30;
   const myCoins = user ? coins[user.id] ?? 0 : 0;
 
+  const wk = weekKey();
+  const myTasks = useMemo(() => {
+    if (!user) return [];
+    return tasks.filter((t) => t.userId === user.id && t.weekStart === wk);
+  }, [tasks, user, wk]);
+  const taskStats = useMemo(() => ({
+    total: myTasks.length,
+    done: myTasks.filter((t) => t.status === 'done').length,
+    inProgress: myTasks.filter((t) => t.status === 'in-progress').length,
+    blocked: myTasks.filter((t) => t.status === 'blocked').length,
+  }), [myTasks]);
+  const upNext = useMemo(() => {
+    const priorityOrder = { high: 0, normal: 1, low: 2 };
+    return [...myTasks]
+      .filter((t) => t.status !== 'done')
+      .sort((a, b) => {
+        if (a.status === 'blocked' && b.status !== 'blocked') return 1;
+        if (a.status !== 'blocked' && b.status === 'blocked') return -1;
+        if (a.status === 'in-progress' && b.status !== 'in-progress') return -1;
+        if (a.status !== 'in-progress' && b.status === 'in-progress') return 1;
+        return priorityOrder[a.priority] - priorityOrder[b.priority];
+      })
+      .slice(0, 3);
+  }, [myTasks]);
+
+  function quickToggle(taskId: string, currentStatus: typeof myTasks[number]['status']) {
+    if (!user) return;
+    const isDone = currentStatus === 'done';
+    updateTaskStatus(taskId, isDone ? 'open' : 'done');
+    if (!isDone) {
+      addCoins(user.id, 15);
+      sfx.coin();
+      celebrate({ intensity: 'mini' });
+      pushToast({ title: 'Uppgift klar! ✅', body: '+15 🪙', kind: 'celebrate' });
+    }
+  }
+
   function claimChallenge() {
     if (!user) return;
     const ok = completeChallenge(user.id, challenge.id, todayKey);
@@ -232,6 +273,52 @@ export function Dashboard() {
             )}
           </div>
         </div>
+      </div>
+
+      <div className="card plan-mini-card">
+        <div className="plan-mini-head">
+          <div>
+            <div className="stat-label">Veckans plan</div>
+            <div style={{ fontWeight: 700, fontSize: 18, marginTop: 2 }}>
+              {taskStats.total === 0
+                ? 'Lägg till uppgifter denna vecka'
+                : `${taskStats.done} av ${taskStats.total} klart`}
+              {taskStats.inProgress > 0 && (
+                <span style={{ color: 'var(--muted)', fontWeight: 400, fontSize: 14, marginLeft: 8 }}>
+                  · {taskStats.inProgress} pågår
+                </span>
+              )}
+              {taskStats.blocked > 0 && (
+                <span style={{ color: 'var(--danger)', fontWeight: 400, fontSize: 14, marginLeft: 8 }}>
+                  · {taskStats.blocked} blockerad
+                </span>
+              )}
+            </div>
+          </div>
+          <button onClick={() => onNavigate?.('plan')}>Öppna →</button>
+        </div>
+        {taskStats.total > 0 && (
+          <div className="progress" style={{ marginTop: 10 }}>
+            <div className="progress-fill" style={{ width: `${(taskStats.done / taskStats.total) * 100}%` }} />
+          </div>
+        )}
+        {upNext.length > 0 && (
+          <div className="plan-mini-list">
+            {upNext.map((t) => (
+              <div key={t.id} className={`plan-mini-row status-${t.status}`}>
+                <button
+                  className="task-checkbox-small"
+                  onClick={() => quickToggle(t.id, t.status)}
+                  title="Markera som klar"
+                >⚪</button>
+                <span className="plan-mini-title">{t.title}</span>
+                <span className="pill" style={{ fontSize: 10 }}>
+                  {t.status === 'in-progress' ? '🟡 Pågår' : t.status === 'blocked' ? '🔴 Blockerad' : '⚪ Öppen'}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="card goal-card" style={{ marginTop: 16 }}>

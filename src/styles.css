@@ -605,6 +605,184 @@ tr.top-row td { background: linear-gradient(90deg, rgba(255,209,102,0.06), trans
   font-size: 13px;
 }
 
+/* ===== Plan mini ===== */
+.plan-mini-card {
+  background:
+    radial-gradient(420px 200px at 100% 0%, rgba(124,92,255,0.12), transparent),
+    var(--panel);
+  margin-bottom: 16px;
+}
+.plan-mini-head { display: flex; justify-content: space-between; align-items: center; }
+.plan-mini-list { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; }
+.plan-mini-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px;
+  background: var(--panel-2);
+  border-radius: 8px;
+  font-size: 13px;
+}
+.plan-mini-row.status-blocked { background: rgba(255,107,107,0.10); }
+.plan-mini-row.status-in-progress { background: rgba(245,165,36,0.10); }
+.plan-mini-title { flex: 1; }
+.task-checkbox-small {
+  background: transparent;
+  border: 0;
+  font-size: 16px;
+  padding: 0;
+  cursor: pointer;
+  line-height: 1;
+}
+
+/* ===== Veckoplan ===== */
+.add-task-card { margin-bottom: 16px; }
+.add-task-row { display: flex; gap: 10px; align-items: center; }
+.task-progress { display: flex; gap: 12px; align-items: center; margin-top: 14px; }
+
+.task-filters {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.task-filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+.task-filter.active {
+  background: rgba(124,92,255,0.18);
+  border-color: var(--accent);
+  color: var(--text);
+}
+.task-filter-count {
+  background: rgba(255,255,255,0.08);
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.task-list { display: flex; flex-direction: column; gap: 8px; }
+
+.task-card {
+  background: var(--panel);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+.task-card.status-blocked { border-left: 3px solid var(--danger); }
+.task-card.status-in-progress { border-left: 3px solid var(--warn); }
+.task-card.status-done { opacity: 0.6; }
+.task-card.task-done .task-title { text-decoration: line-through; color: var(--muted); }
+
+.task-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+}
+.task-checkbox {
+  background: transparent;
+  border: 0;
+  font-size: 22px;
+  padding: 0;
+  width: 30px;
+  line-height: 1;
+}
+.task-body { flex: 1; cursor: pointer; min-width: 0; }
+.task-title-row { display: flex; align-items: center; gap: 8px; }
+.task-title { font-weight: 600; font-size: 14px; }
+.task-pri { font-size: 11px; }
+.task-update-count {
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--panel-2);
+  padding: 1px 7px;
+  border-radius: 999px;
+}
+.task-last-update {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.task-status-select { font-size: 12px; }
+.task-status-select.status-open { border-color: var(--border); }
+.task-status-select.status-in-progress { border-color: rgba(245,165,36,0.4); background: rgba(245,165,36,0.06); }
+.task-status-select.status-blocked { border-color: rgba(255,107,107,0.5); background: rgba(255,107,107,0.06); }
+.task-status-select.status-done { border-color: rgba(41,211,152,0.4); background: rgba(41,211,152,0.06); }
+
+.task-expanded {
+  border-top: 1px solid var(--border-soft);
+  padding: 14px 16px;
+  background: rgba(0,0,0,0.15);
+}
+.task-expanded-tools {
+  display: flex; gap: 8px; align-items: center; margin-bottom: 12px;
+}
+.task-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding-left: 14px;
+  border-left: 2px solid var(--border-soft);
+}
+.task-timeline-item {
+  display: flex;
+  gap: 10px;
+  font-size: 13px;
+  position: relative;
+}
+.task-timeline-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  position: absolute;
+  left: -19px;
+  top: 6px;
+}
+.task-update-input { display: flex; gap: 8px; }
+
+/* ===== Team plans (Veckomöte) ===== */
+.team-plans { display: flex; flex-direction: column; gap: 12px; }
+.team-plan-card { padding: 0; overflow: hidden; }
+.team-plan-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  background: transparent;
+  border: 0;
+  width: 100%;
+}
+.team-plan-head:hover { background: rgba(255,255,255,0.03); }
+.team-plan-stats { display: flex; gap: 6px; flex-wrap: wrap; max-width: 280px; }
+.team-plan-progress { display: flex; align-items: center; gap: 8px; min-width: 160px; }
+.team-plan-chevron { color: var(--muted); font-size: 14px; width: 16px; text-align: center; }
+.team-plan-tasks {
+  padding: 0 18px 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.team-task {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--panel-2);
+  border-radius: 8px;
+  font-size: 13px;
+}
+.team-task.status-blocked { background: rgba(255,107,107,0.08); }
+.team-task.status-in-progress { background: rgba(245,165,36,0.08); }
+
 /* ===== Cloud badge ===== */
 .cloud-badge {
   font-size: 11px;
@@ -798,6 +976,37 @@ tr.top-row td { background: linear-gradient(90deg, rgba(255,209,102,0.06), trans
   line-height: 1.55;
   color: #c8d1e3;
   max-width: 820px;
+}
+
+/* ===== Meeting plans slide ===== */
+.plans-big {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.plan-big-row {
+  display: grid;
+  grid-template-columns: 64px 1fr 380px 80px;
+  align-items: center;
+  gap: 22px;
+  padding: 16px 24px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 16px;
+  opacity: 0;
+  animation: row-in 0.5s ease-out forwards;
+}
+.plan-big-info { text-align: left; }
+.plan-big-name { font-size: 26px; font-weight: 700; }
+.plan-big-stats { color: var(--muted); font-size: 14px; }
+.plan-big-progress { width: 100%; }
+.plan-big-pct {
+  font-size: 28px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-align: right;
 }
 
 .slacker-big {

@@ -20,6 +20,30 @@ export interface OfflineActivity {
   countsAs: 'work' | 'communication';
 }
 
+export type TaskStatus = 'open' | 'in-progress' | 'blocked' | 'done';
+
+export interface TaskUpdate {
+  id: string;
+  at: number;
+  text: string;
+  statusBefore?: TaskStatus;
+  statusAfter?: TaskStatus;
+}
+
+export interface WeeklyTask {
+  id: string;
+  userId: string;
+  weekStart: string;
+  title: string;
+  description?: string;
+  status: TaskStatus;
+  priority: 'low' | 'normal' | 'high';
+  createdAt: number;
+  completedAt?: number;
+  updates: TaskUpdate[];
+  attachment?: { name: string; path: string };
+}
+
 export interface ClockEvent {
   userId: string;
   type: 'in' | 'out';
