@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { useStore } from '../store';
 import { computeFocusScore } from '@shared/scoring';
-import { ROLES } from '@shared/roles';
 
 interface Achievement {
   id: string;
@@ -43,12 +42,10 @@ export function Achievements() {
     return new Set(ACHIEVEMENTS.filter((a) => a.test(ctx)).map((a) => a.id));
   }, [user, sessions, offline]);
 
-  const roleTitle = user?.roles.map((r) => ROLES[r]?.label).filter(Boolean).join(' · ') ?? '';
-
   return (
     <>
       <h1 className="h1">🎖️ Achievements</h1>
-      <p className="subtitle">Lås upp medaljer genom att jobba. Ja, riktigt jobba.{roleTitle && ` · ${roleTitle}`}</p>
+      <p className="subtitle">Lås upp medaljer genom att jobba. Ja, riktigt jobba.</p>
 
       <div className="grid cols-3">
         {ACHIEVEMENTS.map((a) => {

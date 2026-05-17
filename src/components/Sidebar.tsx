@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '../store';
 import { Avatar } from './Avatar';
-import { RoleBadges } from './RoleBadges';
 import { formatHMS } from '../lib/time';
 import { isCloudEnabled } from '../lib/sync';
 
@@ -59,7 +58,6 @@ export function Sidebar({ current, onChange }: { current: View; onChange: (v: Vi
               </div>
             </div>
           </div>
-          <RoleBadges roles={user.roles} size="sm" />
         </div>
       )}
 

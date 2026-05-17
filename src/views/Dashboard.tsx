@@ -8,7 +8,6 @@ import { celebrate, sfx } from '../lib/effects';
 import { pushSession } from '../lib/sync';
 import { ROLES } from '@shared/roles';
 import { OfflineLog } from '../components/OfflineLog';
-import { RoleBadges } from '../components/RoleBadges';
 import { weekKey } from '../lib/time';
 import { analyze } from '../lib/analyze';
 import type { View } from '../components/Sidebar';
@@ -217,7 +216,6 @@ export function Dashboard({ onNavigate }: { onNavigate?: (v: View) => void }) {
           <p className="subtitle">
             {clockedIn ? 'Du är inklockad. Fokus är allt.' : 'Inte inklockad. Dags att börja jobba?'}
           </p>
-          <RoleBadges roles={user.roles} size="md" />
         </div>
         <div className="head-stats">
           {onFire && (

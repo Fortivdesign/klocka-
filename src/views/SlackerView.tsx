@@ -4,7 +4,6 @@ import { startOfWeek, weekKey } from '../lib/time';
 import { pickRoastTitle } from '@shared/scoring';
 import { detect, type DetectorResult, type Signal } from '@shared/detector';
 import { Avatar } from '../components/Avatar';
-import { RoleBadges } from '../components/RoleBadges';
 
 export function SlackerView() {
   const team = useStore((s) => s.team);
@@ -77,7 +76,6 @@ export function SlackerView() {
               <Avatar member={r.member} size={42} />
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 700 }}>{r.member.name}</div>
-                <RoleBadges roles={r.member.roles} size="sm" />
               </div>
               <div className="detective-score">
                 <div style={{ fontWeight: 800, fontSize: 22 }}>{r.result.finalScore}</div>

@@ -3,7 +3,6 @@ import { useStore, type TeamMember } from '../store';
 import { startOfWeek } from '../lib/time';
 import { computeFocusScore } from '@shared/scoring';
 import { Avatar } from '../components/Avatar';
-import { RoleBadges } from '../components/RoleBadges';
 
 interface Row {
   member: TeamMember;
@@ -63,10 +62,7 @@ export function Leaderboard() {
                 <td>
                   <div className="user-cell">
                     <Avatar member={r.member} size={28} />
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <span>{r.member.name}</span>
-                      <RoleBadges roles={r.member.roles} size="sm" />
-                    </div>
+                    <span>{r.member.name}</span>
                   </div>
                 </td>
                 <td>{r.clockedH.toFixed(1)}h</td>

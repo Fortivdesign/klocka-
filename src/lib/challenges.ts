@@ -35,12 +35,16 @@ export interface ShopItem {
 }
 
 export const SHOP: ShopItem[] = [
-  { id: 'fika',          emoji: '☕', title: 'Bjuda team på fika',     description: 'Vi tar fika i pausrummet — du betalar!', cost: 200 },
-  { id: 'leave-early',   emoji: '🏃', title: 'Lämna 15:00 på fredag',  description: 'Cash out tidigt utan dåligt samvete.',   cost: 500 },
-  { id: 'custom-emoji',  emoji: '🦄', title: 'Egen avatar-emoji',      description: 'Byt avatar mot vilken emoji som helst.', cost: 150 },
-  { id: 'wfh-day',       emoji: '🏠', title: 'Hemma-dag',              description: 'Ta en WFH-dag nästa vecka.',             cost: 400 },
-  { id: 'lunch',         emoji: '🍕', title: 'Lunch på företaget',     description: 'Lunch upp till 200 kr på företagets kort.', cost: 350 },
-  { id: 'roast-immunity',emoji: '🛡', title: 'Slacker-immunitet',      description: 'Hoppa över nästa Veckans Slacker-roast.', cost: 250 },
-  { id: 'music-control', emoji: '🎵', title: 'Kontoret\'s spellista',   description: 'Du väljer musiken hela nästa dag.',     cost: 120 },
-  { id: 'parking',       emoji: '🅿️', title: 'P-plats en vecka',       description: 'Reserverad p-plats nästa vecka.',        cost: 300 },
+  { id: 'morby-pickup',     emoji: '🚗', title: 'Bli hämtad i Mörby',         description: 'Någon i teamet hämtar dig på Mörby station på morgonen.',     cost: 400 },
+  { id: 'best-seat',        emoji: '🪑', title: 'Bästa platsen 1 vecka',       description: 'Du får sitta på den fönsterplatsen hela nästa vecka.',         cost: 250 },
+  { id: 'music-control',    emoji: '🎵', title: 'DJ för en dag',               description: 'Du väljer all musik på kontorets högtalare hela dagen.',        cost: 120 },
+  { id: 'wfh-day',          emoji: '🏠', title: 'Hemma-dag',                   description: 'Ta en WFH-dag utan att behöva förklara dig.',                  cost: 350 },
+  { id: 'roast-immunity',   emoji: '🛡', title: 'Slacker-immunitet',           description: 'Hoppa över nästa Veckans Slacker-roast oavsett poäng.',         cost: 250 },
+  { id: 'skip-notes',       emoji: '📝', title: 'Slippa mötesanteckningar',     description: 'Nästa veckomöte: någon annan skriver protokollet.',             cost: 100 },
+  { id: 'pick-challenge',   emoji: '🎯', title: 'Välj nästa veckas utmaning',   description: 'Du bestämmer dagliga utmaningen för hela teamet en hel vecka.', cost: 200 },
+  { id: 'late-arrival',     emoji: '🌅', title: '+1h sov-in en dag',            description: 'Kom in en timme senare en valfri dag utan straff.',             cost: 180 },
+  { id: 'leave-early',      emoji: '🏃', title: 'Lämna 15:00 fredag',           description: 'Cash out tidigt utan dåligt samvete.',                          cost: 500 },
+  { id: 'snacks-pick',      emoji: '🍿', title: 'Välj fredags-snacksen',         description: 'Du bestämmer vad teamet snackar på på fredag.',                 cost: 90 },
+  { id: 'theme-friday',     emoji: '🎭', title: 'Sätta tema på fredagen',        description: 'Hawaii-skjorta? Pyjamas? Du bestämmer.',                        cost: 150 },
+  { id: 'plaque',           emoji: '🏆', title: 'Klocka of the Month-plakett',  description: 'Ditt namn på den fysiska plaketten på kontoret en månad.',     cost: 600 },
 ];

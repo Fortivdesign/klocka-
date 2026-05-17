@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { useStore } from '../store';
 import { weekKey } from '../lib/time';
 import { Avatar } from '../components/Avatar';
-import { RoleBadges } from '../components/RoleBadges';
 import type { TaskStatus } from '@shared/types';
 
 const STATUS_EMOJI: Record<TaskStatus, string> = {
@@ -101,7 +100,6 @@ export function WeeklyMeeting() {
                 <Avatar member={s.member} size={42} />
                 <div style={{ flex: 1, textAlign: 'left' }}>
                   <div style={{ fontWeight: 700, fontSize: 15 }}>{s.member.name}</div>
-                  <RoleBadges roles={s.member.roles} size="sm" />
                 </div>
                 <div className="team-plan-stats">
                   <span className="pill work">{s.done} klart</span>
