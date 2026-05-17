@@ -284,23 +284,27 @@ export const useStore = create<State>()(
     }),
     {
       name: 'klocka-store',
-      version: 5,
+      version: 6,
       storage: createJSONStorage(() => localStorage),
-      migrate: (persisted, fromVersion) => {
+      migrate: (persisted) => {
         const p = persisted as Partial<State> & { team?: TeamMember[] };
-        if (fromVersion < 5) {
-          return {
-            ...(p as Partial<State>),
-            sessions: [],
-            demoSeeded: false,
-            offlineActivities: [],
-            tasks: [],
-            heartbeats: [],
-            team: demoTeam,
-            currentUser: demoTeam.find((m) => m.id === p.currentUser?.id) ?? demoTeam[0],
-          } as Partial<State>;
-        }
-        return { ...(p as Partial<State>), heartbeats: p.heartbeats ?? [] };
+        return {
+          ...(p as Partial<State>),
+          sessions: [],
+          offlineActivities: [],
+          tasks: [],
+          heartbeats: [],
+          purchases: [],
+          completedChallenges: [],
+          unlockedAchievements: {},
+          coins: {},
+          weeklyPlans: [],
+          weeklyDeliveries: [],
+          awards: [],
+          team: demoTeam,
+          currentUser: demoTeam.find((m) => m.id === p.currentUser?.id) ?? demoTeam[0],
+          demoSeeded: true,
+        } as Partial<State>;
       },
       partialize: (s) => ({
         currentUser: s.currentUser,
@@ -323,231 +327,3 @@ export const useStore = create<State>()(
   ),
 );
 
-interface DemoProfile {
-  workBias: number;
-  switchiness: number;
-  passiveProb: number;
-  idleProb: number;
-  ghostBlockPct: number;
-  jiggler?: boolean;
-}
-
-const DEMO_PROFILES: Record<string, DemoProfile> = {
-  default:   { workBias: 0.60, switchiness: 0.10, passiveProb: 0.10, idleProb: 0.10, ghostBlockPct: 0.05 },
-  u_oscar:   { workBias: 0.80, switchiness: 0.06, passiveProb: 0.05, idleProb: 0.10, ghostBlockPct: 0.00 },
-  u_viktor:  { workBias: 0.40, switchiness: 0.28, passiveProb: 0.18, idleProb: 0.18, ghostBlockPct: 0.20 },
-  u_teo:     { workBias: 0.55, switchiness: 0.20, passiveProb: 0.10, idleProb: 0.22, ghostBlockPct: 0.10 },
-  u_freddie: { workBias: 0.72, switchiness: 0.08, passiveProb: 0.05, idleProb: 0.08, ghostBlockPct: 0.00, jiggler: true },
-};
-
-interface DemoAppEntry { app: string; title: string }
-
-function generateSampleRun(
-  start: number,
-  count: number,
-  apps: { work: DemoAppEntry[]; fun: DemoAppEntry[] },
-  p: DemoProfile,
-): ActivitySample[] {
-  const result: ActivitySample[] = [];
-  let currentAppIdx = 0;
-  let currentCategory: 'work' | 'fun' | 'communication' = 'work';
-  let runLength = 0;
-  const ghostStart = Math.floor(count * (0.3 + Math.random() * 0.4));
-  const ghostLen = Math.floor(count * p.ghostBlockPct);
-
-  for (let k = 0; k < count; k++) {
-    const inGhost = p.ghostBlockPct > 0 && k >= ghostStart && k < ghostStart + ghostLen;
-    const idle = !inGhost && Math.random() < p.idleProb;
-
-    if (runLength === 0 || Math.random() < p.switchiness) {
-      const r = Math.random();
-      currentCategory = inGhost ? 'work'
-        : r < p.workBias ? 'work'
-        : r < p.workBias + (1 - p.workBias) * 0.55 ? 'fun'
-        : 'communication';
-      currentAppIdx = Math.floor(Math.random() * (currentCategory === 'work' ? apps.work.length : currentCategory === 'fun' ? apps.fun.length : 1));
-      runLength = 1;
-    } else {
-      runLength += 1;
-    }
-
-    const choice = currentCategory === 'work'
-      ? apps.work[currentAppIdx]
-      : currentCategory === 'fun'
-        ? apps.fun[currentAppIdx % apps.fun.length]
-        : { app: 'Slack', title: '#general' };
-
-    const isPassive = inGhost || (currentCategory === 'work' && Math.random() < p.passiveProb && runLength > 4);
-
-    result.push({
-      timestamp: start + k * 30_000,
-      activeAppName: idle ? choice.app : choice.app,
-      activeWindowTitle: choice.title,
-      category: idle ? currentCategory : currentCategory,
-      keystrokes: idle ? 0 : isPassive ? 0 : currentCategory === 'work' ? Math.floor(Math.random() * 80) : Math.floor(Math.random() * 20),
-      mouseClicks: idle ? 0 : isPassive ? 0 : p.jiggler ? 1 : Math.floor(Math.random() * 10),
-      isIdle: idle,
-    });
-  }
-  return result;
-}
-
-const ROLE_DEMO_APPS: Record<string, { work: { app: string; title: string }[]; fun: { app: string; title: string }[] }> = {
-  'u_teo':     {
-    work: [
-      { app: 'HubSpot', title: 'Pipeline · Q2' },
-      { app: 'Calendar', title: 'Customer demo · Acme AB' },
-      { app: 'Mail', title: 'Re: Offert till kund' },
-      { app: 'Notion', title: 'Board meeting agenda' },
-      { app: 'zoom.us', title: 'Säljmöte' },
-    ],
-    fun: [{ app: 'Instagram', title: 'Reels' }, { app: 'YouTube', title: 'Highlights' }],
-  },
-  'u_oscar':   {
-    work: [
-      { app: 'Cursor', title: 'klocka — main.ts' },
-      { app: 'Terminal', title: 'npm run dev' },
-      { app: 'GitHub Desktop', title: 'PR #142' },
-      { app: 'Linear', title: 'KLO-23' },
-    ],
-    fun: [{ app: 'Spotify', title: 'Focus playlist' }],
-  },
-  'u_viktor':  {
-    work: [
-      { app: 'Figma', title: 'Q2 kampanj · Hero' },
-      { app: 'Canva', title: 'LinkedIn post' },
-      { app: 'Notion', title: 'Marknadsplan' },
-      { app: 'Buffer', title: 'Schemalägg posts' },
-    ],
-    fun: [{ app: 'TikTok', title: 'For you' }, { app: 'FIFA 24', title: 'Career Mode' }, { app: 'Instagram', title: 'Stories' }],
-  },
-  'u_freddie': {
-    work: [
-      { app: 'Numbers', title: 'Cashflow Q2.numbers' },
-      { app: 'Fortnox', title: 'Fakturor · obetalda' },
-      { app: 'Cursor', title: 'reports.ts' },
-      { app: 'Google Sheets', title: 'Budget 2026' },
-    ],
-    fun: [{ app: 'YouTube', title: 'Excel tutorials' }],
-  },
-};
-
-export function generateDemoData() {
-  const now = Date.now();
-  const dayMs = 24 * 60 * 60_000;
-  const team = useStore.getState().team;
-  const store = useStore.getState();
-  team.forEach((member) => {
-    const apps = ROLE_DEMO_APPS[member.id] ?? ROLE_DEMO_APPS['u_oscar'];
-    for (let d = 5; d >= 1; d--) {
-      const start = now - d * dayMs - 8 * 3600_000;
-      const hours = 4 + Math.random() * 5;
-      const end = start + hours * 3600_000;
-      const sampleCount = Math.floor((end - start) / 30_000);
-      const profile = DEMO_PROFILES[member.id] ?? DEMO_PROFILES.default;
-      const samples: ActivitySample[] = generateSampleRun(start, sampleCount, apps, profile);
-      store.recordSession({ start, end, samples, userId: member.id });
-
-      if (member.id === 'u_teo' && d <= 4) {
-        const callStart = start + 2 * 3600_000;
-        store.addOfflineActivity({
-          userId: member.id,
-          start: callStart,
-          end: callStart + 45 * 60_000,
-          type: 'call',
-          description: 'Säljsamtal kund',
-          countsAs: 'work',
-        });
-      }
-      if (member.id === 'u_viktor' && d === 3) {
-        const meetStart = start + 3 * 3600_000;
-        store.addOfflineActivity({
-          userId: member.id,
-          start: meetStart,
-          end: meetStart + 60 * 60_000,
-          type: 'workshop',
-          description: 'Kreativ workshop · Q2-kampanj',
-          countsAs: 'work',
-        });
-      }
-      if (member.id === 'u_viktor' && d === 2) {
-        const xboxStart = start + 4 * 3600_000;
-        const idleStart = Math.floor((xboxStart - start) / 30_000);
-        const idleLen = Math.floor((45 * 60_000) / 30_000);
-        const sessionId = `s_${start}`;
-        const sess = store.sessions.find((s) => s.id === sessionId);
-        if (sess) {
-          for (let i = idleStart; i < idleStart + idleLen && i < sess.samples.length; i++) {
-            sess.samples[i] = { ...sess.samples[i], isIdle: true };
-          }
-        }
-      }
-      if (member.id === 'u_teo' && d <= 3) {
-        const sessionId = `s_${start}`;
-        const sess = store.sessions.find((s) => s.id === sessionId);
-        if (sess) {
-          for (let burst = 0; burst < 4; burst++) {
-            const burstStart = Math.floor((sess.samples.length / 5) * (burst + 1));
-            for (let i = burstStart; i < burstStart + 16 && i < sess.samples.length; i++) {
-              sess.samples[i] = { ...sess.samples[i], isIdle: true };
-            }
-          }
-        }
-      }
-    }
-  });
-
-  const now2 = Date.now();
-  const hbDemo: Array<{ userId: string; offset: number; status: 'hit' | 'miss' }> = [
-    { userId: 'u_oscar',   offset: -2 * 3600_000, status: 'hit' },
-    { userId: 'u_oscar',   offset: -4 * 3600_000, status: 'hit' },
-    { userId: 'u_viktor',  offset: -3 * 3600_000, status: 'miss' },
-    { userId: 'u_teo',     offset: -5 * 3600_000, status: 'miss' },
-    { userId: 'u_freddie', offset: -2 * 3600_000, status: 'hit' },
-  ];
-  hbDemo.forEach((h) => {
-    useStore.setState((st) => ({
-      heartbeats: [
-        ...st.heartbeats,
-        {
-          id: `hb_demo_${h.userId}_${h.offset}`,
-          userId: h.userId,
-          sessionStart: now2 + h.offset - 3600_000,
-          pingedAt: now2 + h.offset,
-          respondedAt: h.status === 'hit' ? now2 + h.offset + 30_000 : undefined,
-          status: h.status,
-        },
-      ],
-    }));
-  });
-
-  const wkStart = new Date();
-  wkStart.setDate(wkStart.getDate() - ((wkStart.getDay() + 6) % 7));
-  wkStart.setHours(0, 0, 0, 0);
-  const wk = wkStart.toISOString().slice(0, 10);
-
-  const DEMO_TASKS: { userId: string; title: string; status: 'open' | 'in-progress' | 'done' | 'blocked'; updates?: string[] }[] = [
-    { userId: 'u_teo',     title: 'Stänga avtal med Acme AB',          status: 'in-progress', updates: ['Skickat reviderat avtal.', 'Väntar på signatur, ringer fredag.'] },
-    { userId: 'u_teo',     title: 'Boka 8 demos',                       status: 'in-progress', updates: ['5 av 8 bokade.'] },
-    { userId: 'u_teo',     title: 'Board-prep deck',                    status: 'open' },
-    { userId: 'u_teo',     title: 'Q2-plan med teamet',                 status: 'done' },
-    { userId: 'u_oscar',   title: 'Mergea PR #142 (klocka-skeleton)',  status: 'done' },
-    { userId: 'u_oscar',   title: 'Refaktor av session-store',           status: 'in-progress', updates: ['Halva storen klar.'] },
-    { userId: 'u_oscar',   title: 'Review av Freddies rapport-PR',      status: 'open' },
-    { userId: 'u_oscar',   title: 'Sätt upp deploy-pipeline',            status: 'blocked', updates: ['Väntar på AWS-access från Freddie.'] },
-    { userId: 'u_viktor',  title: 'Q2-kampanj hero-design',              status: 'in-progress', updates: ['Första utkast i Figma.'] },
-    { userId: 'u_viktor',  title: '3 LinkedIn-posts',                    status: 'in-progress', updates: ['1 publicerad.'] },
-    { userId: 'u_viktor',  title: 'Storyboard till video-reel',          status: 'open' },
-    { userId: 'u_freddie', title: 'Stänga aprils bokföring',              status: 'done' },
-    { userId: 'u_freddie', title: 'Cashflow-prognos Q2',                  status: 'in-progress' },
-    { userId: 'u_freddie', title: 'Faktura-jakt — 12 obetalda',            status: 'open' },
-  ];
-
-  DEMO_TASKS.forEach((t) => {
-    const task = store.addTask({ userId: t.userId, weekStart: wk, title: t.title });
-    if (t.status !== 'open') {
-      store.updateTaskStatus(task.id, t.status);
-    }
-    (t.updates ?? []).forEach((u) => store.addTaskUpdate(task.id, u));
-  });
-}

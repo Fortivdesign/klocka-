@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useStore, generateDemoData } from './store';
+import { useStore } from './store';
 import { Sidebar, type View } from './components/Sidebar';
 import { Dashboard } from './views/Dashboard';
 import { WeeklyPlan } from './views/WeeklyPlan';
@@ -21,8 +21,6 @@ export function App() {
   const [meetingMode, setMeetingMode] = useState(false);
   const [consentChecked, setConsentChecked] = useState(false);
   const [consentGiven, setConsentGiven] = useState(false);
-  const demoSeeded = useStore((s) => s.demoSeeded);
-  const markDemoSeeded = useStore((s) => s.markDemoSeeded);
   const clockedIn = useStore((s) => s.clockedIn);
   const triggerHeartbeat = useStore((s) => s.triggerHeartbeat);
   const pendingHb = useStore((s) => s.pendingHeartbeat);
@@ -53,12 +51,8 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (!demoSeeded) {
-      generateDemoData();
-      markDemoSeeded();
-    }
     startRealtimeSync();
-  }, [demoSeeded, markDemoSeeded]);
+  }, []);
 
   useEffect(() => {
     const off = window.klocka?.on('tray:toggle-clock', () => {
