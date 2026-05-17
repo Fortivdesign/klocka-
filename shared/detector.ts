@@ -1,17 +1,21 @@
-import type { ActivitySample, FocusScore, OfflineActivity } from './types';
+import type { ActivitySample, FocusScore, OfflineActivity, Heartbeat } from './types';
 
 const SAMPLE_SEC = 30;
 const DEEP_FOCUS_MIN_MINUTES = 20;
 const PASSIVE_MIN_MINUTES = 5;
 const HIGH_SWITCH_RATE = 25;
 const MEDIUM_SWITCH_RATE = 12;
+const AWAY_BURST_MIN_MINUTES = 5;
+const XBOX_BLOCK_MIN_MINUTES = 30;
 
 export interface DetectorInput {
   samples: ActivitySample[];
   clockedMinutes: number;
   offline?: OfflineActivity[];
+  heartbeats?: Heartbeat[];
   tasksDone?: number;
   tasksTotal?: number;
+  sessionStart?: number;
 }
 
 export type SignalKind = 'good' | 'bad' | 'warn' | 'info';
@@ -40,6 +44,14 @@ export interface DetectorResult extends FocusScore {
   commApps: AppTime[];
   planCompletion?: number;
   hourlyHeat: number[];
+  awayMinutes: number;
+  longestAwayMinutes: number;
+  awayBursts: number;
+  longAwayBlocks: number;
+  burstRegularity: number;
+  heartbeatHits: number;
+  heartbeatMisses: number;
+  honestPhoneMinutes: number;
 }
 
 interface Run {
@@ -97,6 +109,37 @@ export function detect(input: DetectorInput): DetectorResult {
   if (contextSwitchesPerHour > HIGH_SWITCH_RATE) fragmentation = 'high';
   else if (contextSwitchesPerHour > MEDIUM_SWITCH_RATE) fragmentation = 'medium';
 
+  // === Away-from-computer analysis (telefon, Xbox, etc) ===
+  const idleRuns = runs.filter((r) => r.isIdle);
+  const awayMinutes = idleRuns.reduce((m, r) => m + toMin(r.samples.length), 0);
+  const awayBlocks = idleRuns
+    .map((r) => ({ startTs: r.samples[0].timestamp, min: toMin(r.samples.length) }))
+    .filter((b) => b.min >= AWAY_BURST_MIN_MINUTES);
+  const longestAwayMinutes = awayBlocks.reduce((m, b) => Math.max(m, b.min), 0);
+  const awayBursts = awayBlocks.length;
+  const longAwayBlocks = awayBlocks.filter((b) => b.min >= XBOX_BLOCK_MIN_MINUTES).length;
+
+  // Regularity: low coefficient of variation = telefon-vana (regelbundna pauser)
+  let burstRegularity = 0;
+  if (awayBlocks.length >= 3) {
+    const intervals: number[] = [];
+    for (let i = 1; i < awayBlocks.length; i++) {
+      intervals.push((awayBlocks[i].startTs - awayBlocks[i - 1].startTs) / 60_000);
+    }
+    const meanInt = intervals.reduce((a, x) => a + x, 0) / intervals.length;
+    const variance = intervals.reduce((a, x) => a + (x - meanInt) ** 2, 0) / intervals.length;
+    const cv = meanInt > 0 ? Math.sqrt(variance) / meanInt : 1;
+    burstRegularity = clamp(1 - cv, 0, 1);
+  }
+
+  const honestPhoneMinutes = (input.offline ?? [])
+    .filter((o) => o.type === 'phone-break' || o.countsAs === 'fun')
+    .reduce((a, o) => a + (o.end - o.start) / 60_000, 0);
+
+  const hb = input.heartbeats ?? [];
+  const heartbeatHits = hb.filter((h) => h.status === 'hit').length;
+  const heartbeatMisses = hb.filter((h) => h.status === 'miss').length;
+
   const passiveRuns = runs.filter((r) => {
     if (r.isIdle || r.category !== 'work') return false;
     if (toMin(r.samples.length) < PASSIVE_MIN_MINUTES) return false;
@@ -136,11 +179,28 @@ export function detect(input: DetectorInput): DetectorResult {
   const fragmentationPenalty = fragmentation === 'high' ? 0.15 : fragmentation === 'medium' ? 0.06 : 0;
   const planBonus = planCompletion !== undefined ? planCompletion * 0.10 : 0;
 
+  // Away-from-computer penalty: stora idle-block under klockad tid utan motsvarande
+  // offline-loggning eller mötesförklaring straffas
+  const explainedAwayMin = (input.offline ?? []).reduce((a, o) => a + (o.end - o.start) / 60_000, 0);
+  const unexplainedAwayMin = Math.max(0, awayMinutes - explainedAwayMin);
+  const awayPenalty = input.clockedMinutes > 0
+    ? clamp((unexplainedAwayMin / input.clockedMinutes) * 0.5, 0, 0.35)
+    : 0;
+  const xboxPenalty = longAwayBlocks > 0 ? Math.min(0.15, longAwayBlocks * 0.08) : 0;
+  const regularityPenalty = burstRegularity > 0.7 && awayBursts >= 3 ? 0.10 : 0;
+  const heartbeatPenalty = heartbeatMisses > 0
+    ? Math.min(0.25, heartbeatMisses * 0.12)
+    : 0;
+
   const focusFactor = clamp(
     0.30 * activeRatio
       + 0.30 * workRatio
       - 0.35 * funPenalty
       - 0.25 * passivePenalty
+      - awayPenalty
+      - xboxPenalty
+      - regularityPenalty
+      - heartbeatPenalty
       + deepBonus
       - fragmentationPenalty
       + planBonus
@@ -221,6 +281,53 @@ export function detect(input: DetectorInput): DetectorResult {
       detail: `Bara ${input.tasksDone}/${input.tasksTotal} klart denna vecka.`,
     });
   }
+  if (unexplainedAwayMin >= 60) {
+    signals.push({
+      kind: 'bad', emoji: '📵',
+      label: 'Bortaplåster',
+      detail: `${Math.round(unexplainedAwayMin)} min borta från datorn under klockad tid utan möten loggade.`,
+    });
+  }
+  if (longAwayBlocks >= 2) {
+    signals.push({
+      kind: 'bad', emoji: '🎮',
+      label: 'Xbox-säsong',
+      detail: `${longAwayBlocks} idle-block över 30 min. En match till?`,
+    });
+  } else if (longAwayBlocks === 1 && longestAwayMinutes >= 45) {
+    signals.push({
+      kind: 'warn', emoji: '🎮',
+      label: 'Långt borta',
+      detail: `${Math.round(longestAwayMinutes)} min utan input. Möte eller... något annat?`,
+    });
+  }
+  if (burstRegularity > 0.7 && awayBursts >= 3) {
+    signals.push({
+      kind: 'bad', emoji: '📱',
+      label: 'Telefon-vanan',
+      detail: `${awayBursts} idle-pauser i jämn rytm — telefon-pip-mönster.`,
+    });
+  }
+  if (heartbeatMisses > 0) {
+    signals.push({
+      kind: 'bad', emoji: '✋',
+      label: `${heartbeatMisses} heartbeat-miss${heartbeatMisses === 1 ? '' : 'ar'}`,
+      detail: `Klocka pingade men ingen svarade inom 90 sek.`,
+    });
+  } else if (heartbeatHits >= 2) {
+    signals.push({
+      kind: 'good', emoji: '✅',
+      label: `${heartbeatHits} heartbeat-hits`,
+      detail: `Svarade på alla pingar i tid.`,
+    });
+  }
+  if (honestPhoneMinutes >= 10) {
+    signals.push({
+      kind: 'info', emoji: '🫡',
+      label: 'Ärlig telefon-paus',
+      detail: `${Math.round(honestPhoneMinutes)} min loggad som mobil-paus — respekt för ärligheten.`,
+    });
+  }
 
   if (trust < 0.7) {
     signals.push({
@@ -258,6 +365,14 @@ export function detect(input: DetectorInput): DetectorResult {
     commApps,
     planCompletion,
     hourlyHeat,
+    awayMinutes,
+    longestAwayMinutes,
+    awayBursts,
+    longAwayBlocks,
+    burstRegularity,
+    heartbeatHits,
+    heartbeatMisses,
+    honestPhoneMinutes,
   };
 }
 
@@ -285,6 +400,14 @@ function emptyResult(clocked: number, input: DetectorInput): DetectorResult {
     commApps: [],
     planCompletion,
     hourlyHeat: new Array(24).fill(0),
+    awayMinutes: 0,
+    longestAwayMinutes: 0,
+    awayBursts: 0,
+    longAwayBlocks: 0,
+    burstRegularity: 0,
+    heartbeatHits: 0,
+    heartbeatMisses: 0,
+    honestPhoneMinutes: 0,
   };
 }
 

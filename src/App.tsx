@@ -13,6 +13,7 @@ import { Achievements } from './views/Achievements';
 import { MeetingMode } from './views/MeetingMode';
 import { ConsentGate } from './components/ConsentGate';
 import { Toasts } from './components/Toasts';
+import { HeartbeatModal } from './components/HeartbeatModal';
 import { startRealtimeSync } from './lib/sync';
 
 export function App() {
@@ -22,6 +23,18 @@ export function App() {
   const [consentGiven, setConsentGiven] = useState(false);
   const demoSeeded = useStore((s) => s.demoSeeded);
   const markDemoSeeded = useStore((s) => s.markDemoSeeded);
+  const clockedIn = useStore((s) => s.clockedIn);
+  const triggerHeartbeat = useStore((s) => s.triggerHeartbeat);
+  const pendingHb = useStore((s) => s.pendingHeartbeat);
+
+  useEffect(() => {
+    if (!clockedIn) return;
+    const delay = (30 + Math.random() * 45) * 60_000;
+    const t = setTimeout(() => {
+      if (useStore.getState().clockedIn) triggerHeartbeat();
+    }, delay);
+    return () => clearTimeout(t);
+  }, [clockedIn, triggerHeartbeat, pendingHb]);
 
   useEffect(() => {
     let mounted = true;
@@ -85,6 +98,7 @@ export function App() {
         {view === 'achievements' && <Achievements />}
       </div>
       <Toasts />
+      <HeartbeatModal />
     </div>
   );
 }

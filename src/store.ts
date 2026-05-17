@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { ActivitySample, FocusScore, WeeklyPlan, WeeklyDelivery, SlackerAward, OfflineActivity, WeeklyTask, TaskStatus, TaskUpdate } from '@shared/types';
+import type { ActivitySample, FocusScore, WeeklyPlan, WeeklyDelivery, SlackerAward, OfflineActivity, WeeklyTask, TaskStatus, TaskUpdate, Heartbeat } from '@shared/types';
 import type { RoleId } from '@shared/roles';
 import { roleWorkApps, roleTitlePatterns } from '@shared/roles';
 import { categorizeForRole } from '@shared/types';
@@ -66,6 +66,8 @@ interface State {
   unlockedAchievements: Record<string, string[]>;
   offlineActivities: OfflineActivity[];
   tasks: WeeklyTask[];
+  heartbeats: Heartbeat[];
+  pendingHeartbeat: Heartbeat | null;
   setUser: (u: TeamMember) => void;
   setTeam: (t: TeamMember[]) => void;
   setClockedIn: (b: boolean, sessionStart?: number | null) => void;
@@ -90,6 +92,8 @@ interface State {
   addTaskUpdate: (taskId: string, text: string) => TaskUpdate | null;
   removeTask: (taskId: string) => void;
   editTask: (taskId: string, patch: Partial<Pick<WeeklyTask, 'title' | 'description' | 'priority'>>) => void;
+  triggerHeartbeat: () => Heartbeat | null;
+  resolveHeartbeat: (id: string, status: 'hit' | 'miss') => void;
 }
 
 export function recategorizeForMember(sample: ActivitySample, member: TeamMember | null): ActivitySample {
@@ -127,6 +131,8 @@ export const useStore = create<State>()(
       unlockedAchievements: {},
       offlineActivities: [],
       tasks: [],
+      heartbeats: [],
+      pendingHeartbeat: null,
       setUser: (u) => set({ currentUser: u }),
       setTeam: (t) => set({ team: t }),
       setClockedIn: (b, sessionStart = null) => set({ clockedIn: b, sessionStart }),
@@ -254,25 +260,47 @@ export const useStore = create<State>()(
       removeTask: (taskId) => set((st) => ({ tasks: st.tasks.filter((t) => t.id !== taskId) })),
       editTask: (taskId, patch) =>
         set((st) => ({ tasks: st.tasks.map((t) => (t.id === taskId ? { ...t, ...patch } : t)) })),
+      triggerHeartbeat: () => {
+        const st = useStore.getState();
+        if (!st.currentUser || !st.clockedIn || !st.sessionStart || st.pendingHeartbeat) return null;
+        const hb: Heartbeat = {
+          id: `hb_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          userId: st.currentUser.id,
+          sessionStart: st.sessionStart,
+          pingedAt: Date.now(),
+          status: 'pending',
+        };
+        set({ pendingHeartbeat: hb, heartbeats: [...st.heartbeats, hb] });
+        return hb;
+      },
+      resolveHeartbeat: (id, status) => {
+        set((st) => ({
+          heartbeats: st.heartbeats.map((h) =>
+            h.id === id ? { ...h, status, respondedAt: Date.now() } : h,
+          ),
+          pendingHeartbeat: st.pendingHeartbeat?.id === id ? null : st.pendingHeartbeat,
+        }));
+      },
     }),
     {
       name: 'klocka-store',
-      version: 4,
+      version: 5,
       storage: createJSONStorage(() => localStorage),
       migrate: (persisted, fromVersion) => {
         const p = persisted as Partial<State> & { team?: TeamMember[] };
-        if (fromVersion < 4) {
+        if (fromVersion < 5) {
           return {
             ...(p as Partial<State>),
             sessions: [],
             demoSeeded: false,
             offlineActivities: [],
             tasks: [],
+            heartbeats: [],
             team: demoTeam,
             currentUser: demoTeam.find((m) => m.id === p.currentUser?.id) ?? demoTeam[0],
           } as Partial<State>;
         }
-        return p as Partial<State>;
+        return { ...(p as Partial<State>), heartbeats: p.heartbeats ?? [] };
       },
       partialize: (s) => ({
         currentUser: s.currentUser,
@@ -289,6 +317,7 @@ export const useStore = create<State>()(
         unlockedAchievements: s.unlockedAchievements,
         offlineActivities: s.offlineActivities,
         tasks: s.tasks,
+        heartbeats: s.heartbeats,
       }),
     },
   ),
@@ -441,7 +470,55 @@ export function generateDemoData() {
           countsAs: 'work',
         });
       }
+      if (member.id === 'u_viktor' && d === 2) {
+        const xboxStart = start + 4 * 3600_000;
+        const idleStart = Math.floor((xboxStart - start) / 30_000);
+        const idleLen = Math.floor((45 * 60_000) / 30_000);
+        const sessionId = `s_${start}`;
+        const sess = store.sessions.find((s) => s.id === sessionId);
+        if (sess) {
+          for (let i = idleStart; i < idleStart + idleLen && i < sess.samples.length; i++) {
+            sess.samples[i] = { ...sess.samples[i], isIdle: true };
+          }
+        }
+      }
+      if (member.id === 'u_teo' && d <= 3) {
+        const sessionId = `s_${start}`;
+        const sess = store.sessions.find((s) => s.id === sessionId);
+        if (sess) {
+          for (let burst = 0; burst < 4; burst++) {
+            const burstStart = Math.floor((sess.samples.length / 5) * (burst + 1));
+            for (let i = burstStart; i < burstStart + 16 && i < sess.samples.length; i++) {
+              sess.samples[i] = { ...sess.samples[i], isIdle: true };
+            }
+          }
+        }
+      }
     }
+  });
+
+  const now2 = Date.now();
+  const hbDemo: Array<{ userId: string; offset: number; status: 'hit' | 'miss' }> = [
+    { userId: 'u_oscar',   offset: -2 * 3600_000, status: 'hit' },
+    { userId: 'u_oscar',   offset: -4 * 3600_000, status: 'hit' },
+    { userId: 'u_viktor',  offset: -3 * 3600_000, status: 'miss' },
+    { userId: 'u_teo',     offset: -5 * 3600_000, status: 'miss' },
+    { userId: 'u_freddie', offset: -2 * 3600_000, status: 'hit' },
+  ];
+  hbDemo.forEach((h) => {
+    useStore.setState((st) => ({
+      heartbeats: [
+        ...st.heartbeats,
+        {
+          id: `hb_demo_${h.userId}_${h.offset}`,
+          userId: h.userId,
+          sessionStart: now2 + h.offset - 3600_000,
+          pingedAt: now2 + h.offset,
+          respondedAt: h.status === 'hit' ? now2 + h.offset + 30_000 : undefined,
+          status: h.status,
+        },
+      ],
+    }));
   });
 
   const wkStart = new Date();

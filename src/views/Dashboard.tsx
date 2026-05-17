@@ -61,6 +61,7 @@ export function Dashboard({ onNavigate }: { onNavigate?: (v: View) => void }) {
   const elapsed = clockedIn && sessionStart ? now - sessionStart : 0;
   const clockedMinutes = elapsed / 60_000;
   const offline = useStore((s) => s.offlineActivities);
+  const heartbeats = useStore((s) => s.heartbeats);
   const liveDetector = useMemo(
     () => user ? analyze({
       userId: user.id,
@@ -68,8 +69,10 @@ export function Dashboard({ onNavigate }: { onNavigate?: (v: View) => void }) {
       clockedMinutes,
       offline,
       tasks,
+      heartbeats,
+      sessionStart: sessionStart ?? undefined,
     }) : null,
-    [user, liveSamples, clockedMinutes, offline, tasks],
+    [user, liveSamples, clockedMinutes, offline, tasks, heartbeats, sessionStart],
   );
   const liveScore = liveDetector ?? computeFocusScore({ clockedMinutes, samples: liveSamples });
 
@@ -403,6 +406,17 @@ export function Dashboard({ onNavigate }: { onNavigate?: (v: View) => void }) {
       <div style={{ marginTop: 16 }}>
         <OfflineLog />
       </div>
+
+      {clockedIn && (
+        <div style={{ marginTop: 12, color: 'var(--muted-2)', fontSize: 11, textAlign: 'right' }}>
+          <button
+            style={{ fontSize: 11, padding: '4px 10px' }}
+            onClick={() => useStore.getState().triggerHeartbeat()}
+          >
+            🟢 Testa heartbeat-ping
+          </button>
+        </div>
+      )}
     </>
   );
 }

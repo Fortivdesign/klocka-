@@ -11,6 +11,7 @@ export function SlackerView() {
   const sessions = useStore((s) => s.sessions);
   const offline = useStore((s) => s.offlineActivities);
   const tasks = useStore((s) => s.tasks);
+  const heartbeats = useStore((s) => s.heartbeats);
 
   const rows = useMemo(() => {
     const weekStart = startOfWeek().getTime();
@@ -19,18 +20,20 @@ export function SlackerView() {
       const userSessions = sessions.filter((s) => s.userId === m.id && s.start >= weekStart);
       const samples = userSessions.flatMap((s) => s.samples);
       const userOffline = offline.filter((o) => o.userId === m.id && o.start >= weekStart);
+      const userHb = heartbeats.filter((h) => h.userId === m.id && h.pingedAt >= weekStart);
       const clockedMinutes = userSessions.reduce((acc, s) => acc + (s.end - s.start) / 60_000, 0);
       const myTasks = tasks.filter((t) => t.userId === m.id && t.weekStart === wk);
       const result = detect({
         samples,
         clockedMinutes,
         offline: userOffline,
+        heartbeats: userHb,
         tasksTotal: myTasks.length,
         tasksDone: myTasks.filter((t) => t.status === 'done').length,
       });
       return { member: m, result, clockedMinutes };
     }).sort((a, b) => a.result.finalScore - b.result.finalScore);
-  }, [team, sessions, offline, tasks]);
+  }, [team, sessions, offline, tasks, heartbeats]);
 
   const loser = rows[0];
   const roast = loser ? pickRoastTitle(loser.member.id + new Date().toISOString().slice(0, 10)) : null;
@@ -99,6 +102,9 @@ export function SlackerView() {
               <Mini label="Spöke" value={`${Math.round(r.result.passiveMinutes)} min`} kind={r.result.passiveMinutes > 15 ? 'bad' : 'ok'} />
               <Mini label="App/h" value={Math.round(r.result.contextSwitchesPerHour).toString()} kind={r.result.fragmentation === 'high' ? 'bad' : 'ok'} />
               <Mini label="Flow-block" value={r.result.deepFocusBlocks.toString()} kind={r.result.deepFocusBlocks >= 2 ? 'good' : 'ok'} />
+              <Mini label="Borta" value={`${Math.round(r.result.awayMinutes)} min`} kind={r.result.awayMinutes > 60 ? 'bad' : 'ok'} />
+              <Mini label="Långt borta" value={r.result.longAwayBlocks.toString()} kind={r.result.longAwayBlocks >= 2 ? 'bad' : 'ok'} />
+              <Mini label="Heartbeats" value={`${r.result.heartbeatHits}/${r.result.heartbeatHits + r.result.heartbeatMisses}`} kind={r.result.heartbeatMisses > 0 ? 'bad' : r.result.heartbeatHits > 0 ? 'good' : 'ok'} />
             </div>
 
             {r.result.signals.length === 0 ? (

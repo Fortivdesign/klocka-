@@ -8,6 +8,7 @@ const PRESETS: { type: OfflineActivity['type']; emoji: string; label: string; mi
   { type: 'customer-visit', emoji: '🚗', label: 'Kundbesök',       minutes: 120, counts: 'work' },
   { type: 'workshop',       emoji: '🧠', label: 'Workshop',        minutes: 90, counts: 'work' },
   { type: 'planning',       emoji: '🗺',  label: 'Planering',       minutes: 45, counts: 'work' },
+  { type: 'phone-break',    emoji: '📱', label: 'Mobil-paus',      minutes: 10, counts: 'fun' },
 ];
 
 export function OfflineLog() {
@@ -35,10 +36,11 @@ export function OfflineLog() {
       description: preset.label,
       countsAs: preset.counts,
     });
+    const label = preset.counts === 'work' ? 'jobb' : preset.counts === 'fun' ? 'skoj-tid (ärlighet skyddar trust)' : 'kommunikation';
     pushToast({
       title: `${preset.emoji} ${preset.label} loggat`,
-      body: `${preset.minutes} min räknas som ${preset.counts === 'work' ? 'jobb' : 'kommunikation'}.`,
-      kind: 'success',
+      body: `${preset.minutes} min räknas som ${label}.`,
+      kind: preset.counts === 'fun' ? 'info' : 'success',
     });
   }
 
@@ -126,6 +128,6 @@ export function OfflineLog() {
 
 function iconFor(type: OfflineActivity['type']): string {
   return {
-    call: '📞', meeting: '🤝', 'customer-visit': '🚗', workshop: '🧠', planning: '🗺', other: '📝',
+    call: '📞', meeting: '🤝', 'customer-visit': '🚗', workshop: '🧠', planning: '🗺', 'phone-break': '📱', other: '📝',
   }[type];
 }

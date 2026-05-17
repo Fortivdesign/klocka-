@@ -16,9 +16,18 @@ export interface OfflineActivity {
   userId: string;
   start: number;
   end: number;
-  type: 'meeting' | 'call' | 'customer-visit' | 'workshop' | 'planning' | 'other';
+  type: 'meeting' | 'call' | 'customer-visit' | 'workshop' | 'planning' | 'phone-break' | 'other';
   description: string;
-  countsAs: 'work' | 'communication';
+  countsAs: 'work' | 'communication' | 'fun';
+}
+
+export interface Heartbeat {
+  id: string;
+  userId: string;
+  sessionStart: number;
+  pingedAt: number;
+  respondedAt?: number;
+  status: 'pending' | 'hit' | 'miss';
 }
 
 export type TaskStatus = 'open' | 'in-progress' | 'blocked' | 'done';
