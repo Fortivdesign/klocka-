@@ -1,47 +1,29 @@
 import type { ActivitySample, FocusScore, OfflineActivity } from './types';
+import { detect } from './detector';
 
 export interface ScoringInput {
   clockedMinutes: number;
   samples: ActivitySample[];
   offline?: OfflineActivity[];
+  tasksTotal?: number;
+  tasksDone?: number;
 }
 
-const SAMPLE_INTERVAL_SECONDS = 30;
-
-export function computeFocusScore({ clockedMinutes, samples, offline = [] }: ScoringInput): FocusScore {
-  const activeSamples = samples.filter((s) => !s.isIdle);
-  const workSamples = activeSamples.filter((s) => s.category === 'work');
-  const funSamples = activeSamples.filter((s) => s.category === 'fun');
-
-  const toMin = (count: number) => (count * SAMPLE_INTERVAL_SECONDS) / 60;
-  const offlineMinutes = offline.reduce((a, o) => a + (o.end - o.start) / 60_000, 0);
-  const offlineWorkMinutes = offline
-    .filter((o) => o.countsAs === 'work')
-    .reduce((a, o) => a + (o.end - o.start) / 60_000, 0);
-
-  const activeMinutes = toMin(activeSamples.length) + offlineMinutes;
-  const workCategoryMinutes = toMin(workSamples.length) + offlineWorkMinutes;
-  const funCategoryMinutes = toMin(funSamples.length);
-
-  const effectiveDenominator = Math.max(clockedMinutes, activeMinutes);
-  const activeRatio = effectiveDenominator > 0 ? activeMinutes / effectiveDenominator : 0;
-  const workRatio = activeMinutes > 0 ? workCategoryMinutes / activeMinutes : 0;
-  const funPenalty = activeMinutes > 0 ? funCategoryMinutes / activeMinutes : 0;
-
-  const focusFactor = Math.max(
-    0,
-    Math.min(1, 0.4 * activeRatio + 0.7 * workRatio - 0.5 * funPenalty + 0.1),
-  );
-
-  const finalScore = Math.round(Math.max(clockedMinutes, activeMinutes) * focusFactor);
-
+export function computeFocusScore(input: ScoringInput): FocusScore {
+  const r = detect({
+    samples: input.samples,
+    clockedMinutes: input.clockedMinutes,
+    offline: input.offline,
+    tasksTotal: input.tasksTotal,
+    tasksDone: input.tasksDone,
+  });
   return {
-    clockedMinutes,
-    activeMinutes,
-    workCategoryMinutes,
-    funCategoryMinutes,
-    focusFactor,
-    finalScore,
+    clockedMinutes: r.clockedMinutes,
+    activeMinutes: r.activeMinutes,
+    workCategoryMinutes: r.workCategoryMinutes,
+    funCategoryMinutes: r.funCategoryMinutes,
+    focusFactor: r.focusFactor,
+    finalScore: r.finalScore,
   };
 }
 

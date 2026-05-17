@@ -10,6 +10,7 @@ import { ROLES } from '@shared/roles';
 import { OfflineLog } from '../components/OfflineLog';
 import { RoleBadges } from '../components/RoleBadges';
 import { weekKey } from '../lib/time';
+import { analyze } from '../lib/analyze';
 import type { View } from '../components/Sidebar';
 
 export function Dashboard({ onNavigate }: { onNavigate?: (v: View) => void }) {
@@ -59,7 +60,18 @@ export function Dashboard({ onNavigate }: { onNavigate?: (v: View) => void }) {
 
   const elapsed = clockedIn && sessionStart ? now - sessionStart : 0;
   const clockedMinutes = elapsed / 60_000;
-  const liveScore = computeFocusScore({ clockedMinutes, samples: liveSamples });
+  const offline = useStore((s) => s.offlineActivities);
+  const liveDetector = useMemo(
+    () => user ? analyze({
+      userId: user.id,
+      samples: liveSamples,
+      clockedMinutes,
+      offline,
+      tasks,
+    }) : null,
+    [user, liveSamples, clockedMinutes, offline, tasks],
+  );
+  const liveScore = liveDetector ?? computeFocusScore({ clockedMinutes, samples: liveSamples });
 
   const todayStats = useMemo(() => {
     if (!user) return null;
@@ -370,6 +382,23 @@ export function Dashboard({ onNavigate }: { onNavigate?: (v: View) => void }) {
             : '🦥 Hmm. Dags att rensa flikar?'}
         </div>
       </div>
+
+      {liveDetector && liveDetector.signals.length > 0 && (
+        <div className="card" style={{ marginTop: 16 }}>
+          <div className="stat-label">Live-signaler från detektorn</div>
+          <div className="evidence-list compact" style={{ marginTop: 10 }}>
+            {liveDetector.signals.map((s, i) => (
+              <div key={i} className={`signal signal-${s.kind}`} title={s.detail}>
+                <span style={{ fontSize: 16 }}>{s.emoji}</span>
+                <div>
+                  <div style={{ fontWeight: 600 }}>{s.label}</div>
+                  <div style={{ color: 'var(--muted)', fontSize: 11 }}>{s.detail}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div style={{ marginTop: 16 }}>
         <OfflineLog />

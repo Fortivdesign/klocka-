@@ -8,6 +8,7 @@ export interface ActivitySample {
   keystrokes: number;
   mouseClicks: number;
   isIdle: boolean;
+  systemIdleSec?: number;
 }
 
 export interface OfflineActivity {

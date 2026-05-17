@@ -257,24 +257,22 @@ export const useStore = create<State>()(
     }),
     {
       name: 'klocka-store',
-      version: 3,
+      version: 4,
       storage: createJSONStorage(() => localStorage),
-      migrate: (persisted) => {
+      migrate: (persisted, fromVersion) => {
         const p = persisted as Partial<State> & { team?: TeamMember[] };
-        const base: Partial<State> = { tasks: p?.tasks ?? [] };
-        if (p?.team && p.team.some((m) => !('roles' in m) || !m.roles)) {
+        if (fromVersion < 4) {
           return {
-            ...p,
-            ...base,
-            team: demoTeam,
-            currentUser: demoTeam.find((m) => m.id === p.currentUser?.id) ?? demoTeam[0],
+            ...(p as Partial<State>),
             sessions: [],
             demoSeeded: false,
             offlineActivities: [],
             tasks: [],
+            team: demoTeam,
+            currentUser: demoTeam.find((m) => m.id === p.currentUser?.id) ?? demoTeam[0],
           } as Partial<State>;
         }
-        return { ...(p as Partial<State>), ...base };
+        return p as Partial<State>;
       },
       partialize: (s) => ({
         currentUser: s.currentUser,
@@ -295,6 +293,75 @@ export const useStore = create<State>()(
     },
   ),
 );
+
+interface DemoProfile {
+  workBias: number;
+  switchiness: number;
+  passiveProb: number;
+  idleProb: number;
+  ghostBlockPct: number;
+  jiggler?: boolean;
+}
+
+const DEMO_PROFILES: Record<string, DemoProfile> = {
+  default:   { workBias: 0.60, switchiness: 0.10, passiveProb: 0.10, idleProb: 0.10, ghostBlockPct: 0.05 },
+  u_oscar:   { workBias: 0.80, switchiness: 0.06, passiveProb: 0.05, idleProb: 0.10, ghostBlockPct: 0.00 },
+  u_viktor:  { workBias: 0.40, switchiness: 0.28, passiveProb: 0.18, idleProb: 0.18, ghostBlockPct: 0.20 },
+  u_teo:     { workBias: 0.55, switchiness: 0.20, passiveProb: 0.10, idleProb: 0.22, ghostBlockPct: 0.10 },
+  u_freddie: { workBias: 0.72, switchiness: 0.08, passiveProb: 0.05, idleProb: 0.08, ghostBlockPct: 0.00, jiggler: true },
+};
+
+interface DemoAppEntry { app: string; title: string }
+
+function generateSampleRun(
+  start: number,
+  count: number,
+  apps: { work: DemoAppEntry[]; fun: DemoAppEntry[] },
+  p: DemoProfile,
+): ActivitySample[] {
+  const result: ActivitySample[] = [];
+  let currentAppIdx = 0;
+  let currentCategory: 'work' | 'fun' | 'communication' = 'work';
+  let runLength = 0;
+  const ghostStart = Math.floor(count * (0.3 + Math.random() * 0.4));
+  const ghostLen = Math.floor(count * p.ghostBlockPct);
+
+  for (let k = 0; k < count; k++) {
+    const inGhost = p.ghostBlockPct > 0 && k >= ghostStart && k < ghostStart + ghostLen;
+    const idle = !inGhost && Math.random() < p.idleProb;
+
+    if (runLength === 0 || Math.random() < p.switchiness) {
+      const r = Math.random();
+      currentCategory = inGhost ? 'work'
+        : r < p.workBias ? 'work'
+        : r < p.workBias + (1 - p.workBias) * 0.55 ? 'fun'
+        : 'communication';
+      currentAppIdx = Math.floor(Math.random() * (currentCategory === 'work' ? apps.work.length : currentCategory === 'fun' ? apps.fun.length : 1));
+      runLength = 1;
+    } else {
+      runLength += 1;
+    }
+
+    const choice = currentCategory === 'work'
+      ? apps.work[currentAppIdx]
+      : currentCategory === 'fun'
+        ? apps.fun[currentAppIdx % apps.fun.length]
+        : { app: 'Slack', title: '#general' };
+
+    const isPassive = inGhost || (currentCategory === 'work' && Math.random() < p.passiveProb && runLength > 4);
+
+    result.push({
+      timestamp: start + k * 30_000,
+      activeAppName: idle ? choice.app : choice.app,
+      activeWindowTitle: choice.title,
+      category: idle ? currentCategory : currentCategory,
+      keystrokes: idle ? 0 : isPassive ? 0 : currentCategory === 'work' ? Math.floor(Math.random() * 80) : Math.floor(Math.random() * 20),
+      mouseClicks: idle ? 0 : isPassive ? 0 : p.jiggler ? 1 : Math.floor(Math.random() * 10),
+      isIdle: idle,
+    });
+  }
+  return result;
+}
 
 const ROLE_DEMO_APPS: Record<string, { work: { app: string; title: string }[]; fun: { app: string; title: string }[] }> = {
   'u_teo':     {
@@ -348,29 +415,8 @@ export function generateDemoData() {
       const hours = 4 + Math.random() * 5;
       const end = start + hours * 3600_000;
       const sampleCount = Math.floor((end - start) / 30_000);
-      const workBias =
-        member.id === 'u_oscar' ? 0.78 :
-        member.id === 'u_viktor' ? 0.40 :
-        member.id === 'u_teo' ? 0.55 :
-        member.id === 'u_freddie' ? 0.70 :
-        0.6;
-      const samples: ActivitySample[] = Array.from({ length: sampleCount }).map((_, k) => {
-        const r = Math.random();
-        const idle = r > 0.91;
-        const isWork = !idle && Math.random() < workBias;
-        const isFun = !idle && !isWork && Math.random() < (1 - workBias) * 0.55;
-        const workChoice = apps.work[Math.floor(Math.random() * apps.work.length)];
-        const funChoice = apps.fun[Math.floor(Math.random() * apps.fun.length)];
-        return {
-          timestamp: start + k * 30_000,
-          activeAppName: isWork ? workChoice.app : isFun ? funChoice.app : 'Slack',
-          activeWindowTitle: isWork ? workChoice.title : isFun ? funChoice.title : '#general',
-          category: isWork ? 'work' : isFun ? 'fun' : 'communication',
-          keystrokes: isWork ? Math.floor(Math.random() * 80) : 0,
-          mouseClicks: Math.floor(Math.random() * 10),
-          isIdle: idle,
-        };
-      });
+      const profile = DEMO_PROFILES[member.id] ?? DEMO_PROFILES.default;
+      const samples: ActivitySample[] = generateSampleRun(start, sampleCount, apps, profile);
       store.recordSession({ start, end, samples, userId: member.id });
 
       if (member.id === 'u_teo' && d <= 4) {

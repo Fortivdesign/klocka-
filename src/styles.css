@@ -605,6 +605,100 @@ tr.top-row td { background: linear-gradient(90deg, rgba(255,209,102,0.06), trans
   font-size: 13px;
 }
 
+/* ===== Detective ===== */
+.evidence-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 14px;
+}
+.evidence-list.compact { gap: 4px; margin-top: 8px; }
+
+.signal {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  border: 1px solid var(--border-soft);
+  background: var(--panel-2);
+}
+.signal-good { border-color: rgba(41,211,152,0.35); background: rgba(41,211,152,0.08); }
+.signal-bad { border-color: rgba(255,107,107,0.35); background: rgba(255,107,107,0.08); }
+.signal-warn { border-color: rgba(245,165,36,0.4); background: rgba(245,165,36,0.08); }
+
+.detective-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin-top: 14px;
+}
+.detective-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-left: 3px solid var(--border);
+}
+.detective-card.trust-low { border-left-color: var(--danger); }
+.detective-card.trust-med { border-left-color: var(--warn); }
+.detective-card.trust-high { border-left-color: var(--accent-2); }
+.detective-head { display: flex; align-items: center; gap: 12px; }
+.detective-score { text-align: right; }
+.detective-bars { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.bar-stat-head {
+  display: flex; justify-content: space-between;
+  font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.bar-stat-track {
+  height: 6px;
+  background: var(--panel-2);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.bar-stat-fill { height: 100%; transition: width 0.4s ease; border-radius: 999px; }
+
+.detective-grid-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.mini {
+  background: var(--panel-2);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  padding: 8px;
+  text-align: center;
+}
+.mini-bad { background: rgba(255,107,107,0.08); border-color: rgba(255,107,107,0.25); }
+.mini-good { background: rgba(41,211,152,0.08); border-color: rgba(41,211,152,0.25); }
+.mini-value { font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; }
+.mini-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+
+.detective-details { margin-top: 8px; font-size: 12px; }
+.detective-details summary {
+  cursor: pointer;
+  color: var(--muted);
+  padding: 6px 0;
+  user-select: none;
+}
+.detective-details summary:hover { color: var(--text); }
+.app-bars { display: flex; flex-direction: column; gap: 4px; padding-top: 6px; }
+.app-bar-row {
+  display: grid;
+  grid-template-columns: 140px 1fr 50px;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+}
+.app-bar-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.app-bar-track { height: 6px; background: var(--panel); border-radius: 999px; overflow: hidden; }
+.app-bar-fill { height: 100%; border-radius: 999px; }
+.app-bar-time { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+
 /* ===== Plan mini ===== */
 .plan-mini-card {
   background:

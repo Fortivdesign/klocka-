@@ -3,7 +3,7 @@ import type { ActivitySample } from '../shared/types';
 import { categorize } from '../shared/types';
 
 const SAMPLE_INTERVAL_MS = 30_000;
-const IDLE_THRESHOLD_SEC = 90;
+const IDLE_THRESHOLD_SEC = 60;
 
 type ActiveWinFn = () => Promise<{ owner: { name: string }; title: string } | undefined>;
 
@@ -60,6 +60,7 @@ export class ActivityTracker {
       keystrokes: this.keystrokes,
       mouseClicks: this.mouseClicks,
       isIdle: idle,
+      systemIdleSec,
     };
     this.samples.push(sample);
     this.keystrokes = 0;
